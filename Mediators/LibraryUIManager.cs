@@ -55,7 +55,7 @@ namespace Calypso
                     DB.LoadLibrary(lib);
                     break;
                 case "rename":
-                    if (Util.TextPrompt("Set new library name: ", out string result))
+                    if (Util.TextPrompt("Set new library name: ", out string result, lib.Name))
                     {
                         lib.Name = result;
                         LoadLibraryUI();

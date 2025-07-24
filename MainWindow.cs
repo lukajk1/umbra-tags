@@ -14,7 +14,6 @@ namespace Calypso
     public partial class MainWindow : Form
     {
         public static MainWindow i;
-        public static string MainWindowTitle = "Calypso";
         public static Pane FocusedPane;
         public static bool initialized;
         public MainWindow()
@@ -25,6 +24,8 @@ namespace Calypso
             this.KeyPreview = true;
             this.FormClosed += MainWindow_FormClosed;
             this.MouseWheel += MainWindow_MouseWheel;
+            this.Text = $"Calypso {GlobalValues.Version}";
+
 
             Activate();
             Focus();
@@ -154,6 +155,12 @@ namespace Calypso
                 return true;
             }
 
+            else if (keyData == (Keys.Control | Keys.N))
+            {
+                DB.AddNewLibrary();
+                return true;
+            }
+
             else if (keyData == (Keys.Control | Keys.K))
             {
                 DB.appdata.ActiveLibrary.FlushTagDictDuplicates();
@@ -256,7 +263,7 @@ namespace Calypso
         }
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string message = "Calypso Image Manager v1.0.0\nSupported file types: .jpg, .jpeg, .png, .bmp, .gif\nCreated by lukajk";
+            string message = $"Calypso Image Manager {GlobalValues.Version}\nSupported file types: .jpg, .jpeg, .png, .bmp, .gif\nCreated by lukajk";
             string title = "About Calypso";
             MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
@@ -306,11 +313,6 @@ namespace Calypso
         private void checkBoxRandomize_CheckedChanged(object sender, EventArgs e)
         {
             Searchbar.RepeatLastSearch();
-        }
-
-        private void toolStripMenuItemAddNewLibrary_Click(object sender, EventArgs e)
-        {
-            DB.AddNewLibrary();
         }
 
         private void newGalleryToolStripMenuItem_Click(object sender, EventArgs e)

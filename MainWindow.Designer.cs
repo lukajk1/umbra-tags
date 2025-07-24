@@ -41,7 +41,6 @@
             toolStripMenuItem7 = new ToolStripMenuItem();
             toolStripMenuItem1 = new ToolStripMenuItem();
             exitToolStripMenuItem = new ToolStripMenuItem();
-            switchLibraryToolStripMenuItem = new ToolStripMenuItem();
             viewToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItem2 = new ToolStripMenuItem();
             toolStripMenuItem5 = new ToolStripMenuItem();
@@ -122,7 +121,7 @@
             // 
             // fileToolStripMenuItem
             // 
-            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { addNewLibraryToolStripMenuItem, openExistingLibraryToolStripMenuItem, toolStripMenuItem1, exitToolStripMenuItem, switchLibraryToolStripMenuItem });
+            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { addNewLibraryToolStripMenuItem, openExistingLibraryToolStripMenuItem, toolStripMenuItem1, exitToolStripMenuItem });
             fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             fileToolStripMenuItem.Size = new Size(37, 20);
             fileToolStripMenuItem.Text = "&File";
@@ -190,12 +189,6 @@
             exitToolStripMenuItem.Size = new Size(288, 22);
             exitToolStripMenuItem.Text = "E&xit";
             exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
-            // 
-            // switchLibraryToolStripMenuItem
-            // 
-            switchLibraryToolStripMenuItem.Name = "switchLibraryToolStripMenuItem";
-            switchLibraryToolStripMenuItem.Size = new Size(288, 22);
-            switchLibraryToolStripMenuItem.Text = "&Switch Library";
             // 
             // viewToolStripMenuItem
             // 
@@ -702,6 +695,5 @@
         private ToolStripMenuItem toolStripMenuItem6;
         private ToolStripMenuItem toolStripMenuItem9;
         private ToolStripMenuItem toolStripMenuItem10;
-        private ToolStripMenuItem switchLibraryToolStripMenuItem;
     }
 }

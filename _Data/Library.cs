@@ -45,6 +45,29 @@ namespace Calypso
 
         }
 
+        public void FlushDeletedImages()
+        {
+            List<ImageData> toRemove = new();
+
+            foreach (List<ImageData> list in tagDict.Values)
+            {
+                foreach (var img in list)
+                {
+                    if (!File.Exists(img.Filepath))
+                    {
+                        toRemove.Add(img);
+                    }
+                }
+
+                foreach (var item in toRemove)
+                {
+                    list.Remove(item);
+                }
+            }
+
+            TagTreePanel.i.Populate(tagTree, tagDict); // manually refresh so counts update..
+        }
+
         private bool FormatAndValidateNewTag(string input, out string output)
         {
             output = input.Trim();

@@ -195,12 +195,15 @@ namespace Calypso
         {
             PooledTile tile = GetPooledTile();
 
+            if (!File.Exists(imgData.ThumbnailPath)) return;
+
             int thumbSize = GlobalValues.DefaultThumbnailSize;
             tile.PictureBox.Size = new Size(thumbSize, thumbSize);
             tile.Container.Width = thumbSize + 10;
             tile.Container.Height = thumbSize + tile.Label.Height + 10;
 
             tile.Label.Text = imgData.Filename;
+
 
             using var stream = new FileStream(imgData.ThumbnailPath, FileMode.Open, FileAccess.Read);
             tile.PictureBox.Image = Image.FromStream(stream);

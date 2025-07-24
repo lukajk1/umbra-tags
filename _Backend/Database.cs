@@ -116,7 +116,6 @@ namespace Calypso
             if (appdata.Libraries[index] != appdata.ActiveLibrary)
             {
                 LoadLibrary(appdata.Libraries[index]);
-
             }
         }
         public static void LoadLibrary(Library lib)
@@ -165,6 +164,7 @@ namespace Calypso
         public static void GenTagDictAndSaveLibrary()
         {
             SetAllAndUntaggedToDict();
+            //appdata.ActiveLibrary.FlushDeletedImages();
             Save();
         }
 

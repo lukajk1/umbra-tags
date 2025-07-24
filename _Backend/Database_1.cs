@@ -109,22 +109,21 @@ namespace Calypso
         #region miscellaneous helpers
         public static void DeleteImageData(List<ImageData> imgDataList)
         {
-            //foreach (ImageData imgData in imgDataList)
-            //{
-            //    appdata.ActiveLibrary.ImageDataList.Remove(imgData);
+            foreach (ImageData imgData in imgDataList)
+            {
+                if (File.Exists(imgData.ThumbnailPath))
+                {
+                    File.Delete(imgData.ThumbnailPath);
+                }
 
-            //    if (File.Exists(imgData.ThumbnailPath))
-            //    {
-            //        File.Delete(imgData.ThumbnailPath);
-            //    }
+                if (File.Exists(imgData.Filepath))
+                {
+                    File.Delete(imgData.Filepath);
+                }
+            }
 
-            //    if (File.Exists(imgData.Filepath))
-            //    {
-            //        File.Delete(imgData.Filepath);
-            //    }
-            //}
-
-            //GenTagDictAndSaveLibrary();
+            appdata.ActiveLibrary.FlushDeletedImages();
+            GenTagDictAndSaveLibrary();
         }
         public static void AddNewLibrary()
         {

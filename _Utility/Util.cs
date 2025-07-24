@@ -13,10 +13,11 @@ namespace Calypso
 
     internal class Util
     {
-        public static bool TextPrompt(string message, out string output)
+        public static bool TextPrompt(string message, out string output, string prefillText = "")
         {
             using (var prompt = new TextPrompt(MainWindow.i, message))
             {
+                prompt.newTagTextBox.Text = prefillText;  
                 if (prompt.ShowDialog() == DialogResult.OK)
                 {
                     output = prompt.ResultText;
@@ -65,6 +66,8 @@ namespace Calypso
 
         public static string CreateThumbnail(Library lib, string originalImagePath)
         {
+            if (!File.Exists(originalImagePath)) return "";
+
             string originalFilename = Path.GetFileName(originalImagePath);
             string thumbDir = Path.Combine(lib.Dirpath, "data");
             string thumbSavePath = Path.Combine(thumbDir, "thumb_" + originalFilename);
@@ -78,6 +81,7 @@ namespace Calypso
 
         private static Image CreateThumbnail(string imagePath, int thumbnailHeight)
         {
+
             using Image fullImage = Image.FromFile(imagePath);
             int originalWidth = fullImage.Width;
             int originalHeight = fullImage.Height;

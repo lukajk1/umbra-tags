@@ -153,12 +153,12 @@ namespace Calypso
 
         public  void RenameTag(object sender)
         {
-            if (Util.TextPrompt("Set new tag name: ", out string newName))
+            if (selectedNode.Tag is not TagNode tagNode) return;
+
+            if (Util.TextPrompt("Set new tag name: ", out string newName, tagNode.Name))
             {
-                if (selectedNode.Tag is TagNode tagNode)
-                {
-                    DB.appdata.ActiveLibrary.RenameTag(tagNode.Name, newName);
-                }
+                DB.appdata.ActiveLibrary.RenameTag(tagNode.Name, newName);
+                
             }
 
         }
