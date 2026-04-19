@@ -168,14 +168,26 @@ namespace Calypso
 
                 if (!File.Exists(fp)) continue;
 
-                // Skip if already registered
-                if (lib.filenameDict.ContainsKey(fp)) continue;
+                string filename = Path.GetFileName(fp);
+                string destPath = Path.Combine(lib.Dirpath, filename);
 
-                string thumbPath = Util.CreateThumbnail(lib, fp);
+                // Resolve name collision
+                if (File.Exists(destPath))
+                {
+                    string nameNoExt = Path.GetFileNameWithoutExtension(filename);
+                    string newFilename = $"{nameNoExt}_{Guid.NewGuid():N}{ext}";
+                    destPath = Path.Combine(lib.Dirpath, newFilename);
+                }
+
+                File.Copy(fp, destPath);
+
+                if (lib.filenameDict.ContainsKey(destPath)) continue;
+
+                string thumbPath = Util.CreateThumbnail(lib, destPath);
                 if (string.IsNullOrEmpty(thumbPath)) continue;
 
-                var imgData = new ImageData(fp, thumbPath);
-                lib.filenameDict[fp] = imgData;
+                var imgData = new ImageData(destPath, thumbPath);
+                lib.filenameDict[destPath] = imgData;
                 added.Add(imgData);
             }
 
