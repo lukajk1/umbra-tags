@@ -144,8 +144,7 @@ namespace Calypso
                     if (token.IsCancellationRequested) return;
                     try
                     {
-                        using var stream = new FileStream(thumbnailPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                        var bmp = new Bitmap(stream);
+                        var bmp = Util.LoadImage(thumbnailPath);
 
                         if (token.IsCancellationRequested) { bmp.Dispose(); return; }
 
@@ -290,8 +289,7 @@ namespace Calypso
             var tileTag = AddCardShell(imgData);
             if (tileTag == null) return;
 
-            using var stream = new FileStream(imgData.ThumbnailPath, FileMode.Open, FileAccess.Read);
-            tileTag._PictureBox.Image = new Bitmap(stream);
+            tileTag._PictureBox.Image = Util.LoadImage(imgData.ThumbnailPath);
         }
 
 

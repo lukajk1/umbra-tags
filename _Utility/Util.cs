@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Imazen.WebP;
 
 namespace Calypso
 {
@@ -55,13 +56,24 @@ namespace Calypso
 
         public static string[] GetAllImageFilepaths(string path)
         {
-           return System.IO.Directory.GetFiles(path, "*.*")
-                               .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
-                                           f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
-                                           f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
-                                           f.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) ||
-                                           f.EndsWith(".gif", StringComparison.OrdinalIgnoreCase))
-                               .ToArray();
+            return System.IO.Directory.GetFiles(path, "*.*")
+                                .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                                            f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+                                            f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+                                            f.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) ||
+                                            f.EndsWith(".gif", StringComparison.OrdinalIgnoreCase) ||
+                                            f.EndsWith(".webp", StringComparison.OrdinalIgnoreCase))
+                                .ToArray();
+        }
+
+        public static Bitmap LoadImage(string path)
+        {
+            if (path.EndsWith(".webp", StringComparison.OrdinalIgnoreCase))
+            {
+                byte[] bytes = File.ReadAllBytes(path);
+                return new SimpleDecoder().DecodeFromBytes(bytes, bytes.LongLength);
+            }
+            return new Bitmap(path);
         }
 
         public static string CreateThumbnail(Library lib, string originalImagePath)
@@ -70,7 +82,13 @@ namespace Calypso
 
             string originalFilename = Path.GetFileName(originalImagePath);
             string thumbDir = Path.Combine(lib.Dirpath, "data");
-            string thumbSavePath = Path.Combine(thumbDir, "thumb_" + originalFilename);
+
+            // WebP thumbnails are stored as PNG since GDI+ cannot write WebP
+            bool isWebP = originalFilename.EndsWith(".webp", StringComparison.OrdinalIgnoreCase);
+            string thumbFilename = isWebP
+                ? "thumb_" + Path.GetFileNameWithoutExtension(originalFilename) + ".png"
+                : "thumb_" + originalFilename;
+            string thumbSavePath = Path.Combine(thumbDir, thumbFilename);
 
             using Image thumb = CreateThumbnail(originalImagePath, GlobalValues.ThumbnailSize);
             ImageFormat format = GetImageFormatFromExtension(thumbSavePath);
@@ -81,15 +99,9 @@ namespace Calypso
 
         private static Image CreateThumbnail(string imagePath, int thumbnailHeight)
         {
-
-            using Image fullImage = Image.FromFile(imagePath);
-            int originalWidth = fullImage.Width;
-            int originalHeight = fullImage.Height;
-
-            int newHeight = thumbnailHeight;
-            int newWidth = (int)(originalWidth * (newHeight / (float)originalHeight));
-
-            return fullImage.GetThumbnailImage(newWidth, newHeight, () => false, IntPtr.Zero);
+            using Bitmap fullImage = LoadImage(imagePath);
+            int newWidth = (int)(fullImage.Width * (thumbnailHeight / (float)fullImage.Height));
+            return fullImage.GetThumbnailImage(newWidth, thumbnailHeight, () => false, IntPtr.Zero);
         }
 
 

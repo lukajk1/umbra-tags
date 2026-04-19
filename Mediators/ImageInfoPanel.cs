@@ -85,10 +85,10 @@ namespace Calypso
                 return;
             }
 
-            using (Image img = Image.FromFile(imgData.Filepath))
+            using (Bitmap img = Util.LoadImage(imgData.Filepath))
             {
                 Image clone = new Bitmap(img);
-                senderImageData = clone; // memory leak proofing
+                senderImageData = clone;
 
                 DrawImage(clone);
                 SetTableInfo(imgData, clone);
