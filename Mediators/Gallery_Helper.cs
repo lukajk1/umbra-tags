@@ -105,6 +105,10 @@ namespace Calypso
             bool ctrlHeld = (Control.ModifierKeys & Keys.Control) == Keys.Control;
             bool shiftHeld = (Control.ModifierKeys & Keys.Shift) == Keys.Shift;
 
+            bool rightClickWithinMultiSelection = e.Button == MouseButtons.Right
+                && selectedTiles.Count > 1
+                && selectedTiles.Contains(tTag);
+
             if (shiftHeld)
             {
                 if (selectedTiles.Count == 1)
@@ -124,11 +128,13 @@ namespace Calypso
                     }
                 }
             }
-            else if (!ctrlHeld)
+            else if (!ctrlHeld && !rightClickWithinMultiSelection)
             {
                 ClearSelection();
             }
-            AddToSelection(tTag);
+
+            if (!rightClickWithinMultiSelection)
+                AddToSelection(tTag);
 
             //if (e.Button == MouseButtons.Left || e.Button == MouseButtons.Right) {}
 
