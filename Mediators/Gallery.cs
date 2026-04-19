@@ -66,9 +66,15 @@ namespace Calypso
 
             flowLayoutGallery.AllowDrop = true;
             flowLayoutGallery.DragEnter += flowLayoutGallery_DragEnter;
-            flowLayoutGallery.DragDrop += flowLayoutGallery_DragDrop; 
-            flowLayoutGallery.SizeChanged += FlowLayoutGallery_SizeChanged; 
+            flowLayoutGallery.DragDrop += flowLayoutGallery_DragDrop;
+            flowLayoutGallery.SizeChanged += FlowLayoutGallery_SizeChanged;
             flowLayoutGallery.MouseWheel += FlowLayoutGallery_MouseWheel;
+
+            // Enable double-buffering on the FlowLayoutPanel to reduce repaint flicker during resize.
+            // DoubleBuffered is protected on Control, so reflection is required to set it externally.
+            typeof(Control).GetProperty("DoubleBuffered",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                ?.SetValue(flowLayoutGallery, true);
 
             DB.OnNewLibraryLoaded += OnNewLibraryLoaded;
         }

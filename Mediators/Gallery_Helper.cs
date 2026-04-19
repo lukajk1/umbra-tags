@@ -35,9 +35,22 @@ namespace Calypso
             }
         }
 
+        private static System.Windows.Forms.Timer? _resizeDebounceTimer;
+
         private static void FlowLayoutGallery_SizeChanged(object sender, EventArgs e)
         {
-            CountPictureBoxesPerRow();
+            if (_resizeDebounceTimer == null)
+            {
+                _resizeDebounceTimer = new System.Windows.Forms.Timer { Interval = 150 };
+                _resizeDebounceTimer.Tick += (s, _) =>
+                {
+                    _resizeDebounceTimer.Stop();
+                    CountPictureBoxesPerRow();
+                };
+            }
+
+            _resizeDebounceTimer.Stop();
+            _resizeDebounceTimer.Start();
         }
 
         const int DragThreshold = 17; // (px) less sensitive than system default to avoid false positives more 
