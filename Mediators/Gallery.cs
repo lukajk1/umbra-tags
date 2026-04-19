@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
@@ -105,19 +106,55 @@ namespace Calypso
         }
 
 
+        private static CancellationTokenSource? _loadCts;
+
         private static void GenerateGallery(List<ImageData> results)
         {
-            float processedCount = 0f;
+            _loadCts?.Cancel();
+            _loadCts = new CancellationTokenSource();
+            var token = _loadCts.Token;
+
+            // Add all tiles to the gallery immediately with no image, so the grid appears at once.
+            flowLayoutGallery.SuspendLayout();
+            var tiles = new List<(TileTag tileTag, string thumbnailPath)>(results.Count);
             foreach (ImageData imageData in results)
             {
-                AddCard(imageData);
-
-                processedCount++;
-                LoadProgress = processedCount / results.Count;
+                var tileTag = AddCardShell(imageData);
+                if (tileTag != null)
+                    tiles.Add((tileTag, imageData.ThumbnailPath));
             }
-
-            LoadProgress = 0f;
+            flowLayoutGallery.ResumeLayout(true);
             CountPictureBoxesPerRow();
+
+            // Load images from disk in parallel, marshal each result back to the UI thread.
+            int completed = 0;
+            foreach (var (tileTag, thumbnailPath) in tiles)
+            {
+                var capturedTag = tileTag;
+                Task.Run(() =>
+                {
+                    if (token.IsCancellationRequested) return;
+                    try
+                    {
+                        using var stream = new FileStream(thumbnailPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                        var bmp = new Bitmap(stream);
+
+                        if (token.IsCancellationRequested) { bmp.Dispose(); return; }
+
+                        flowLayoutGallery.BeginInvoke(() =>
+                        {
+                            if (token.IsCancellationRequested) { bmp.Dispose(); return; }
+                            capturedTag._PictureBox.Image?.Dispose();
+                            capturedTag._PictureBox.Image = bmp;
+
+                            int done = Interlocked.Increment(ref completed);
+                            LoadProgress = (float)done / tiles.Count;
+                            if (done == tiles.Count) LoadProgress = 0f;
+                        });
+                    }
+                    catch { /* skip tiles that can't be read */ }
+                }, token);
+            }
         }
 
         private static void ClearExistingControls()
@@ -205,22 +242,18 @@ namespace Calypso
         }
 
 
-        public static void AddCard(ImageData imgData)
+        // Creates the tile shell on the UI thread without loading the image.
+        // Returns null if the thumbnail file doesn't exist.
+        private static TileTag? AddCardShell(ImageData imgData)
         {
+            if (!File.Exists(imgData.ThumbnailPath)) return null;
+
             PooledTile tile = GetPooledTile();
-
-            if (!File.Exists(imgData.ThumbnailPath)) return;
-
             int thumbSize = GlobalValues.DefaultThumbnailSize;
             tile.PictureBox.Size = new Size(thumbSize, thumbSize);
             tile.Container.Width = thumbSize + 10;
             tile.Container.Height = thumbSize + tile.Label.Height + 10;
-
             tile.Label.Text = imgData.Filename;
-
-
-            using var stream = new FileStream(imgData.ThumbnailPath, FileMode.Open, FileAccess.Read);
-            tile.PictureBox.Image = Image.FromStream(stream);
 
             TileTag tileTag = new TileTag
             {
@@ -233,12 +266,21 @@ namespace Calypso
             tile.PictureBox.Tag = tileTag;
             allTiles.Add(tileTag);
 
-            // Attach events
             tile.PictureBox.DoubleClick += PictureBox_DoubleClick;
             tile.PictureBox.MouseClick += PictureBox_MouseClick;
             AddDraggableHandlers(tile.PictureBox);
 
             flowLayoutGallery.Controls.Add(tile.Container);
+            return tileTag;
+        }
+
+        public static void AddCard(ImageData imgData)
+        {
+            var tileTag = AddCardShell(imgData);
+            if (tileTag == null) return;
+
+            using var stream = new FileStream(imgData.ThumbnailPath, FileMode.Open, FileAccess.Read);
+            tileTag._PictureBox.Image = new Bitmap(stream);
         }
 
 
