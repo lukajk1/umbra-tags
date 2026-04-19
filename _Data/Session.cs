@@ -13,17 +13,17 @@ namespace Calypso
         public bool RandomiseChecked { get; set; }
         public FormWindowState WindowState { get; set; }
         public Library LastActiveLibrary { get; set; }
-        public float ZoomFactor { get; set; }
+        public int ZoomSteps { get; set; }
 
         public Session(int windowWidth, int windowHeight, bool randomiseChecked,
-                    FormWindowState windowState, Library lastActiveLibrary, float zoomFactor)
+                    FormWindowState windowState, Library lastActiveLibrary, int zoomSteps)
         {
             WindowWidth = windowWidth;
             WindowHeight = windowHeight;
             RandomiseChecked = randomiseChecked;
             WindowState = windowState;
             LastActiveLibrary = lastActiveLibrary;
-            ZoomFactor = zoomFactor;
+            ZoomSteps = zoomSteps;
         }
     }
 }

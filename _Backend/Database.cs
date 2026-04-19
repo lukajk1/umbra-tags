@@ -137,6 +137,19 @@ namespace Calypso
             // add any new filepaths that don't have an entry in filenamedict to it
             AddNewEntriesToFilenameDict(allImageFilepaths);
 
+            // remove entries whose source file no longer exists
+            var deadKeys = appdata.ActiveLibrary.filenameDict
+                .Where(kvp => !File.Exists(kvp.Value.Filepath))
+                .Select(kvp => kvp.Key)
+                .ToList();
+            foreach (string key in deadKeys)
+            {
+                ImageData dead = appdata.ActiveLibrary.filenameDict[key];
+                if (File.Exists(dead.ThumbnailPath))
+                    File.Delete(dead.ThumbnailPath);
+                appdata.ActiveLibrary.filenameDict.Remove(key);
+            }
+
             // check all thumbnails are valid -- generate if not
             foreach (var kvp in appdata.ActiveLibrary.filenameDict)
             {

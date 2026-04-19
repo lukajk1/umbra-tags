@@ -42,16 +42,20 @@ namespace Calypso
                 else mainW.toolStripProgressBar1.Visible = true;
             }
         }
-        private static float _zoom = 1f;
-        public static float Zoom
+        private const int ZoomPixelInterval = 30;
+        private const int MinZoomSteps = -4;
+        private const int MaxZoomSteps = 8;
+        private static int _zoomSteps = 0;
+        public static int Zoom
         {
-            get => _zoom;
+            get => _zoomSteps;
             set
             {
-                if (value > 0)
+                int clamped = Math.Clamp(value, MinZoomSteps, MaxZoomSteps);
+                if (clamped != _zoomSteps)
                 {
-                    _zoom = value;
-                    SetZoom(value);
+                    _zoomSteps = clamped;
+                    SetZoom(GlobalValues.DefaultThumbnailSize + _zoomSteps * ZoomPixelInterval);
                 }
             }
         }
@@ -175,20 +179,25 @@ namespace Calypso
             flowLayoutGallery.Controls.Clear();
         }
 
+        private static DateTime _lastZoomTime = DateTime.MinValue;
+        private static readonly TimeSpan ZoomCooldown = TimeSpan.FromMilliseconds(400);
+
         public static void ZoomFromWheel(MouseEventArgs e)
         {
-            if ((Control.ModifierKeys & Keys.Control) == Keys.Control)
-            {
-                if (e.Delta > 0)
-                    Gallery.Zoom += 0.2f;
-                else if (e.Delta < 0)
-                    Gallery.Zoom -= 0.2f;
-            }
-        }
-        private static void SetZoom(float magnifyingFactor)
-        {
-            int thumbSize = (int)(GlobalValues.DefaultThumbnailSize * magnifyingFactor);
+            if ((Control.ModifierKeys & Keys.Control) != Keys.Control) return;
+            if (DateTime.UtcNow - _lastZoomTime < ZoomCooldown) return;
 
+            _lastZoomTime = DateTime.UtcNow;
+
+            if (e.Delta > 0)
+                Gallery.Zoom += 1;
+            else if (e.Delta < 0)
+                Gallery.Zoom -= 1;
+        }
+
+        private static void SetZoom(int thumbSize)
+        {
+            flowLayoutGallery.SuspendLayout();
             foreach (TileTag tile in allTiles)
             {
                 tile._PictureBox.Size = new Size(thumbSize, thumbSize);
@@ -199,9 +208,7 @@ namespace Calypso
                 tile._Container.Width = thumbSize + 10;
                 tile._Container.Height = thumbSize + labelHeight + 10;
             }
-
-            //mainW.toolStripLabelThumbnailSize.Text = $"Thumbnail Height: {thumbSize}px";
-            flowLayoutGallery.PerformLayout();
+            flowLayoutGallery.ResumeLayout(true);
             CountPictureBoxesPerRow();
         }
 
