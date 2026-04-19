@@ -90,8 +90,11 @@ namespace Calypso
             ClearExistingControls();
             GenerateGallery(results);
 
+            if (_zoomSteps != 0)
+                SetZoom(GlobalValues.DefaultThumbnailSize + _zoomSteps * ZoomPixelInterval);
+
             resultsCountLabel.Text = $"Results: {results.Count}";
-            mainW.toolStripLabelThumbnailSize.Text = $"Thumbnail Height: {GlobalValues.DefaultThumbnailSize}px";
+            mainW.toolStripLabelThumbnailSize.Text = $"Thumbnail Height: {GlobalValues.DefaultThumbnailSize + _zoomSteps * ZoomPixelInterval}px";
         }
         public static void OnNewLibraryLoaded(Library lib)
         {

@@ -87,7 +87,7 @@ namespace Calypso
             this.checkBoxRandomize.Checked = session.RandomiseChecked;
             this.WindowState = session.WindowState;
             DB.appdata.ActiveLibrary = session.LastActiveLibrary;
-            Gallery.Zoom = session.ZoomSteps;
+            Gallery.Zoom = session.ZoomModifier;
         }
 
         private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)
@@ -103,7 +103,7 @@ namespace Calypso
                 randomiseChecked: this.checkBoxRandomize.Checked,
                 windowState: this.WindowState,
                 lastActiveLibrary: DB.appdata.ActiveLibrary,
-                zoomSteps: Gallery.Zoom
+                zoomModifier: Gallery.Zoom
             );
         }
 
@@ -116,7 +116,7 @@ namespace Calypso
                 randomiseChecked: this.checkBoxRandomize.Checked,
                 windowState: this.WindowState,
                 lastActiveLibrary: lib,
-                zoomSteps: Gallery.Zoom
+                zoomModifier: Gallery.Zoom
             );
         }
 
