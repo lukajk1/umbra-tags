@@ -28,6 +28,7 @@ namespace Calypso
         static TileTag? lastSelected; 
 
         private static readonly Stack<PooledTile> pooledTiles = new();
+        private static readonly Color PlaceholderColor = Color.FromArgb(60, 60, 60);
 
         private static int pbPerRow = 0;
         private static float _loadProgress = 0f;
@@ -102,6 +103,14 @@ namespace Calypso
             lastSelected = null;
             ImageInfoPanel.Clear();
         }
+        private static Bitmap MakePlaceholder(int width, int height)
+        {
+            var bmp = new Bitmap(width, height);
+            using var g = Graphics.FromImage(bmp);
+            g.Clear(PlaceholderColor);
+            return bmp;
+        }
+
         private static PooledTile GetPooledTile()
         {
             return pooledTiles.Count > 0 ? pooledTiles.Pop() : new PooledTile();
@@ -150,7 +159,7 @@ namespace Calypso
 
                         flowLayoutGallery.BeginInvoke(() =>
                         {
-                            if (token.IsCancellationRequested) { bmp.Dispose(); return; }
+                            if (token.IsCancellationRequested || capturedTag._PictureBox.Tag != capturedTag) { bmp.Dispose(); return; }
                             capturedTag._PictureBox.Image?.Dispose();
                             capturedTag._PictureBox.Image = bmp;
 
@@ -180,6 +189,8 @@ namespace Calypso
             }
 
             flowLayoutGallery.Controls.Clear();
+            flowLayoutGallery.Invalidate();
+            flowLayoutGallery.Update();
         }
 
         private static DateTime _lastZoomTime = DateTime.MinValue;
@@ -274,6 +285,7 @@ namespace Calypso
             };
 
             tile.PictureBox.Tag = tileTag;
+            tile.PictureBox.Image = MakePlaceholder(thumbSize, thumbSize);
             allTiles.Add(tileTag);
 
             tile.PictureBox.DoubleClick += PictureBox_DoubleClick;
