@@ -43,7 +43,7 @@ namespace Calypso
                 else mainW.toolStripProgressBar1.Visible = true;
             }
         }
-        private const int ZoomPixelInterval = 30;
+        private const int ZoomPixelInterval = 50;
         private const int MinZoomSteps = -4;
         private const int MaxZoomSteps = 8;
         private static int _zoomSteps = 0;

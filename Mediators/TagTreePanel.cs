@@ -32,7 +32,10 @@ namespace Calypso
 
             var pinItem = new ToolStripMenuItem("Pin Tag") { Name = "pinTagToolStripMenuItem" };
             pinItem.Click += (s, e) => TogglePin(s);
-            mainW.contextMenuTagTree.Items.Add(pinItem);
+
+            var menu = mainW.contextMenuTagTree;
+            menu.Items.Insert(0, pinItem);
+            menu.Items.Insert(menu.Items.IndexOf(mainW.deleteToolStripMenuItem), new ToolStripSeparator());
 
             Populate(DB.appdata.ActiveLibrary.tagTree, DB.appdata.ActiveLibrary.tagDict);
         }
