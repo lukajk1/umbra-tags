@@ -71,7 +71,7 @@ namespace Calypso
             GenerateTagTree(DB.appdata.ActiveLibrary.tagTree, DB.appdata.ActiveLibrary.tagDict);
 
         }
-        public void GenerateTagTree(TagTreeRefactor tagTreeRefactor, Dictionary<string, List<ImageData>> tagDict)
+        public void GenerateTagTree(TagTree tagTreeRefactor, Dictionary<string, List<ImageData>> tagDict)
         {
             tagEditorTree.BeginUpdate();
             tagEditorTree.Nodes.Clear();

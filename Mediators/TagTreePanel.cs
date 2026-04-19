@@ -40,7 +40,7 @@ namespace Calypso
             Populate(DB.appdata.ActiveLibrary.tagTree, DB.appdata.ActiveLibrary.tagDict);
         }
 
-        public void Populate(TagTreeRefactor tagTreeRefactor, Dictionary<string, List<ImageData>> tagDict)
+        public void Populate(TagTree tagTreeRefactor, Dictionary<string, List<ImageData>> tagDict)
         {
             tagTree.Nodes.Clear();
 
@@ -63,7 +63,7 @@ namespace Calypso
             tagTree.ExpandAll(); 
             
         }
-        public void GenerateTagTree(TagTreeRefactor tagTreeRefactor, Dictionary<string, List<ImageData>> tagDict)
+        public void GenerateTagTree(TagTree tagTreeRefactor, Dictionary<string, List<ImageData>> tagDict)
         {
             tagTree.BeginUpdate();
             tagTree.Nodes.Clear();
