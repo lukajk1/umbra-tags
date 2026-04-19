@@ -96,6 +96,17 @@ namespace Calypso
 
 
         }
+        public static void Clear()
+        {
+            senderImageData = null;
+            displayedImage = default;
+            pictureBox.Image = null;
+            labelFilename.Text = "--";
+            labelDimensions.Text = "--";
+            labelFilesize.Text = "--";
+            labelTags.Text = "--";
+        }
+
         public static void Refresh()
         {
             Display(displayedImage);

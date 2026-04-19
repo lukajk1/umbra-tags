@@ -100,6 +100,7 @@ namespace Calypso
         {
             selectedTiles.Clear();
             lastSelected = null;
+            ImageInfoPanel.Clear();
         }
         private static PooledTile GetPooledTile()
         {
