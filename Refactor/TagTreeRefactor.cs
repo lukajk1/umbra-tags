@@ -48,7 +48,7 @@ namespace Calypso
 
         public void OrderByDepthAndAlphabetical()
         {
-            tagNodes = tagNodes.OrderBy(t => t.Depth).ThenBy(t => t.Name).ToList();
+            tagNodes = tagNodes.OrderBy(t => t.Depth).ThenBy(t => !t.Pinned).ThenBy(t => t.Name).ToList();
         }
     }
 }

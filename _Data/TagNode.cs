@@ -11,6 +11,7 @@ namespace Calypso
         public int Depth {  get; set; }
         public string Parent { get; set; }
         public string Name { get; set; }
+        public bool Pinned { get; set; } = false;
         public List<string> Children { get; set; } = new();
 
         public TagNode(string tag, string parent = "", int depth = 0) // parent empty by default

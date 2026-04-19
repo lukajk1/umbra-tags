@@ -27,8 +27,12 @@ namespace Calypso
             tagTree = mainW.tagTree;
             tagTree.BeforeCollapse += (s, e) =>
             {
-                e.Cancel = true; // Prevent collapsing 
+                e.Cancel = true;
             };
+
+            var pinItem = new ToolStripMenuItem("Pin Tag") { Name = "pinTagToolStripMenuItem" };
+            pinItem.Click += (s, e) => TogglePin(s);
+            mainW.contextMenuTagTree.Items.Add(pinItem);
 
             Populate(DB.appdata.ActiveLibrary.tagTree, DB.appdata.ActiveLibrary.tagDict);
         }
@@ -82,7 +86,8 @@ namespace Calypso
 
         private void AddToTree(TagNode node, int contentCount)
         {
-            string displayText = $"#{node.Name} ({contentCount})";
+            string pin = node.Pinned ? "★ " : "";
+            string displayText = $"{pin}{node.Name} ({contentCount})";
 
             TreeNode newTreeNode = new TreeNode(displayText)
             {
@@ -147,6 +152,19 @@ namespace Calypso
             else if (e.Button == MouseButtons.Right)
             {
                 if (sender is TreeNode treeNode) selectedNode = treeNode;
+
+                // Update pin item label to reflect current state
+                bool isPinned = selectedNode?.Tag is TagNode tn && tn.Pinned;
+                var pinItem = mainW.contextMenuTagTree.Items
+                    .OfType<ToolStripMenuItem>()
+                    .FirstOrDefault(i => i.Name == "pinTagToolStripMenuItem");
+                if (pinItem != null)
+                    pinItem.Text = isPinned ? "Unpin Tag" : "Pin Tag";
+
+                // Only show pin option for real tag nodes, not "All" / "Untagged"
+                if (pinItem != null)
+                    pinItem.Visible = selectedNode?.Tag is TagNode;
+
                 mainW.contextMenuTagTree.Show(tagTree, e.Location);
             }
         }
@@ -175,6 +193,13 @@ namespace Calypso
                 DB.appdata.ActiveLibrary.DeleteTagFromTree(tn.Name);
 
             }
+        }
+
+        public void TogglePin(object sender)
+        {
+            if (selectedNode?.Tag is not TagNode tagNode) return;
+            tagNode.Pinned = !tagNode.Pinned;
+            DB.appdata.ActiveLibrary.RefreshTagStructure();
         }
 
         public  void AddChildTag(object sender)
