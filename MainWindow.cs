@@ -39,6 +39,7 @@ namespace Calypso
             Searchbar.Init(this);
             TagEditManager.Init(this);
             LayoutManager.Init(this);
+            ShortcutHandler.Init(this);
 
             DB.Init(this);
             new TagTreePanel(this);
@@ -59,162 +60,9 @@ namespace Calypso
         }
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            Control focused = Form.ActiveForm?.ActiveControl;
-
-            bool searchBoxFocused = (FocusedPane != Pane.Searchbar);
-
-            #region single key shortcuts
-            if (keyData == Keys.R)
-            {
-                if (!searchBoxFocused)
-                {
-                    LayoutManager.TogglePanel(tagTreeGallerySplitContainer, 1);
-                    return true; // suppress further handling
-                }
-
-            }
-            else if (keyData == Keys.N)
-            {
-                if (!searchBoxFocused)
-                {
-                    LayoutManager.TogglePanel(masterSplitContainer, 2);
-                    return true;
-                }
-            }
-            else if (keyData == Keys.I)
-            {
-                if (!searchBoxFocused)
-                {
-                    LayoutManager.TogglePanel(imageInfoHorizontalSplitContainer, 2);
-                    return true;
-                }
-            }
-            else if (keyData == Keys.T)
-            {
-                if (!searchBoxFocused)
-                {
-                    Gallery.OpenTagEditorByCommand();
-                    return true;
-                }
-            }
-
-            else if (keyData == Keys.Delete)
-            {
-                if (FocusedPane == Pane.Gallery) Gallery.DeleteSelected();
-            }
-            #endregion
-
-            #region control shortcuts
-            if (keyData == (Keys.Control | Keys.Q))
-            {
-                Close();
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.L))
-            {
-                if (focused == searchBox)
-                {
-                    // focus the tagtree I guess. just has to move focus off the searchbar
-                    tagTree.Focus();
-                }
-                else
-                    searchBox.Focus();
-
-
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.Enter))
-            {
-                DB.OpenCurrentLibrarySourceFolder();
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.A))
-            {
-                if (!(focused == searchBox))
-                {
-                    Gallery.SelectAll();
-                }
-                return true;
-            }
-
-            else if (keyData == (Keys.Control | Keys.D1))
-            {
-                LayoutManager.SetLayout(LayoutManager.DefaultLayout);
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.D2))
-            {
-                //MessageBox.Show("received");
-                LayoutManager.SetLayout(LayoutManager.LargeWindow);
-                return true;
-            }
-
-            else if (keyData == (Keys.Control | Keys.S))
-            {
-                MessageBox.Show($"{masterSplitContainer.SplitterDistance}");
-                return true;
-            }
-
-            else if (keyData == (Keys.Control | Keys.N))
-            {
-                DB.AddNewLibrary();
-                return true;
-            }
-
-            else if (keyData == (Keys.Control | Keys.K))
-            {
-                DB.appdata.ActiveLibrary.FlushTagDictDuplicates();
-                return true;
-            }
-
-            else if (keyData == (Keys.Control | Keys.T))
-            {
-                if (Util.TextPrompt("Set tag name: ", out string newTag))
-                {
-                    DB.appdata.ActiveLibrary.AddTagToTree(new TagNode(newTag));
-                }
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.I))
-            {
-                Commands.AddFilesViaDialog();
-                return true;
-            }
-            else if (keyData == (Keys.Control | Keys.E))
-            {
-                Gallery.OpenSelectedInExplorer();
-                return true;
-            }
-            // arrow keys
-            else if (keyData == Keys.Left || keyData == Keys.Right || keyData == Keys.Up || keyData == Keys.Down)
-            {
-                Gallery.ArrowSelect(keyData);
-            }
-
-
-            else if (keyData == Keys.Enter)
-            {
-                if (FocusedPane == Pane.Gallery)
-                {
-                    Gallery.OpenSelected();
-                }
-                return true;
-            }
-            #endregion
-
-            // shift
-            else if ((keyData & (Keys.Control | Keys.Shift)) == (Keys.Control | Keys.Shift))
-            {
-                for (int i = 1; i <= 9; i++)
-                {
-                    if ((keyData & Keys.KeyCode) == (Keys)((int)Keys.D0 + i))
-                    {
-                        DB.LoadLibrary(i);
-                        break;
-                    }
-                }
-            }
-
+            if (ShortcutHandler.HandleGlobal(keyData)) return true;
+            if (FocusedPane == Pane.Searchbar) return base.ProcessCmdKey(ref msg, keyData);
+            if (ShortcutHandler.HandleContextual(keyData)) return true;
             return base.ProcessCmdKey(ref msg, keyData);
         }
         private void MainWindow_MouseWheel(object sender, MouseEventArgs e)

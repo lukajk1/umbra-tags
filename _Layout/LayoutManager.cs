@@ -32,9 +32,9 @@ namespace Calypso
                 RightPanel_IsOpen = true
             };
 
-        private static SplitContainer tagTreeSplitContainer;
-        private static SplitContainer masterSplitContainer;
-        private static SplitContainer imageInfoHorizontalSplitContainer;
+        public static SplitContainer TagTreeSplitContainer { get; private set; }
+        public static SplitContainer MasterSplitContainer { get; private set; }
+        public static SplitContainer ImageInfoSplitContainer { get; private set; }
 
         static int metadataHSplitter_Distance;
         static int leftPanelVSplitter_Distance;
@@ -45,22 +45,22 @@ namespace Calypso
         {
             LayoutManager.mainW = mainW;
 
-            tagTreeSplitContainer = mainW.tagTreeGallerySplitContainer;
-            imageInfoHorizontalSplitContainer = mainW.imageInfoHorizontalSplitContainer;
-            masterSplitContainer = mainW.masterSplitContainer;
+            TagTreeSplitContainer = mainW.tagTreeGallerySplitContainer;
+            ImageInfoSplitContainer = mainW.imageInfoHorizontalSplitContainer;
+            MasterSplitContainer = mainW.masterSplitContainer;
 
             SetLayout(DefaultLayout);
         }
 
         public static void SetLayout(Layout ld)
         {
-            SetPanel(masterSplitContainer, 2, ld.RightPanel_IsOpen);
-            SetPanel(tagTreeSplitContainer, 1, ld.LeftPanel_IsOpen);
-            SetPanel(imageInfoHorizontalSplitContainer, 2, ld.Metadata_IsOpen);
+            SetPanel(MasterSplitContainer, 2, ld.RightPanel_IsOpen);
+            SetPanel(TagTreeSplitContainer, 1, ld.LeftPanel_IsOpen);
+            SetPanel(ImageInfoSplitContainer, 2, ld.Metadata_IsOpen);
 
-            tagTreeSplitContainer.SplitterDistance = (int)Math.Round(tagTreeSplitContainer.Width * ld.LeftPanelHSplitter_Ratio);
-            masterSplitContainer.SplitterDistance = (int)Math.Round(masterSplitContainer.Width * ld.RightPanelHSplitter_Ratio);
-            imageInfoHorizontalSplitContainer.SplitterDistance = (int)Math.Round(imageInfoHorizontalSplitContainer.Height * ld.MetadataVSplitter_Ratio);
+            TagTreeSplitContainer.SplitterDistance = (int)Math.Round(TagTreeSplitContainer.Width * ld.LeftPanelHSplitter_Ratio);
+            MasterSplitContainer.SplitterDistance = (int)Math.Round(MasterSplitContainer.Width * ld.RightPanelHSplitter_Ratio);
+            ImageInfoSplitContainer.SplitterDistance = (int)Math.Round(ImageInfoSplitContainer.Height * ld.MetadataVSplitter_Ratio);
         }
 
         public static void SaveLayout()
