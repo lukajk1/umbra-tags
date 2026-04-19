@@ -101,7 +101,11 @@ namespace Calypso
         {
             using Bitmap fullImage = LoadImage(imagePath);
             int newWidth = (int)(fullImage.Width * (thumbnailHeight / (float)fullImage.Height));
-            return fullImage.GetThumbnailImage(newWidth, thumbnailHeight, () => false, IntPtr.Zero);
+            var thumb = new Bitmap(newWidth, thumbnailHeight);
+            using var g = Graphics.FromImage(thumb);
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.DrawImage(fullImage, 0, 0, newWidth, thumbnailHeight);
+            return thumb;
         }
 
 

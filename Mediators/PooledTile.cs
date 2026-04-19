@@ -28,7 +28,8 @@ namespace Calypso
                 SizeMode = PictureBoxSizeMode.Zoom,
                 Cursor = Cursors.Hand,
                 Dock = DockStyle.Top,
-                Margin = new Padding(5)
+                Margin = new Padding(5),
+                BackColor = Color.Transparent
             };
 
             Container = new Panel

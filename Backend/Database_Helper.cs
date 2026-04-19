@@ -29,10 +29,9 @@ namespace Calypso
             {
                 if (appdata.ActiveLibrary.tagDict.ContainsKey(stripped))
                 {
-                    results = appdata.ActiveLibrary.tagDict[stripped];
+                    results = new List<ImageData>(appdata.ActiveLibrary.tagDict[stripped]);
 
                     List<TagNode> children = appdata.ActiveLibrary.tagTree.GetAllChildren(stripped);
-                    Debug.WriteLine("children count" + children.Count);
 
                     foreach (TagNode child in children)
                     {
@@ -41,6 +40,9 @@ namespace Calypso
                     }
 
                     results = results.Distinct().ToList();
+
+                    if (stripped == "untagged")
+                        results = results.OrderByDescending(img => File.GetLastWriteTime(img.Filepath)).ToList();
                 }
             }
 
@@ -155,43 +157,32 @@ namespace Calypso
 
         public static List<ImageData> AddFilesToLibrary(string[] filepaths)
         {
-            //string targetDir = appdata.ActiveLibrary.Dirpath;
-            //string thumbSavePath = string.Empty;
-            //string destPath = string.Empty;
-            //List<ImageData> newImages = new();
+            var lib = appdata.ActiveLibrary;
+            var added = new List<ImageData>();
 
-            //foreach (string fp in filepaths)
-            //{
-            //    // copy to main folder
-            //    string filename = string.Empty;
-            //    string ext = Path.GetExtension(fp).ToLower();
-            //    if (ext is ".jpg" or ".jpeg" or ".png" or ".bmp" or ".gif")
-            //    {
-            //        filename = Path.GetFileName(fp);
-            //        destPath = Path.Combine(targetDir, filename);
+            foreach (string fp in filepaths)
+            {
+                string ext = Path.GetExtension(fp).ToLower();
+                if (ext is not (".jpg" or ".jpeg" or ".png" or ".bmp" or ".gif" or ".webp"))
+                    continue;
 
-            //        if (!File.Exists(destPath))
-            //        {
-            //            File.Copy(fp, destPath, overwrite: false);
-            //            thumbSavePath = Util.CreateThumbnail(appdata.ActiveLibrary, destPath);
-            //        }
-            //        else
-            //        {
-            //            Util.ShowErrorDialog($"A file named {filename} already exists in {targetDir}!");
-            //            return null;
-            //        }
-            //    }
+                if (!File.Exists(fp)) continue;
 
-            //    if (thumbSavePath != string.Empty && filename != string.Empty)
-            //    {
-            //        ImageData newImageData = new(destPath, thumbSavePath);
-            //        newImages.Add(newImageData);
-            //        appdata.ActiveLibrary.ImageDataList.Add(newImageData);
-            //    }
-            //}
+                // Skip if already registered
+                if (lib.filenameDict.ContainsKey(fp)) continue;
 
-            GenTagDictAndSaveLibrary();
-            return new List<ImageData>();
+                string thumbPath = Util.CreateThumbnail(lib, fp);
+                if (string.IsNullOrEmpty(thumbPath)) continue;
+
+                var imgData = new ImageData(fp, thumbPath);
+                lib.filenameDict[fp] = imgData;
+                added.Add(imgData);
+            }
+
+            if (added.Count > 0)
+                GenTagDictAndSaveLibrary();
+
+            return added;
         }
         #endregion
     }

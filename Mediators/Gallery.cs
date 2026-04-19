@@ -270,7 +270,7 @@ namespace Calypso
             if (!File.Exists(imgData.ThumbnailPath)) return null;
 
             PooledTile tile = GetPooledTile();
-            int thumbSize = GlobalValues.DefaultThumbnailSize;
+            int thumbSize = GlobalValues.DefaultThumbnailSize + _zoomSteps * ZoomPixelInterval;
             tile.PictureBox.Size = new Size(thumbSize, thumbSize);
             tile.Container.Width = thumbSize + 10;
             tile.Container.Height = thumbSize + tile.Label.Height + 10;

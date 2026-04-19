@@ -26,12 +26,43 @@ namespace Calypso
         private static void flowLayoutGallery_DragDrop(object sender, DragEventArgs e)
         {
             string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            List<ImageData> myList = DB.AddFilesToLibrary(files);
-            
-            foreach (ImageData img in myList)
+            List<ImageData> added = DB.AddFilesToLibrary(files);
+            if (added.Count == 0) return;
+
+            // Insert shells at the top of the gallery, then load images async
+            flowLayoutGallery.SuspendLayout();
+            var newTiles = new List<(TileTag tileTag, string thumbnailPath)>();
+            for (int i = added.Count - 1; i >= 0; i--)
             {
-                AddCard(img);
-                Debug.WriteLine("this was called");
+                var tileTag = AddCardShell(added[i]);
+                if (tileTag == null) continue;
+
+                // Move the control and tile to the front
+                flowLayoutGallery.Controls.SetChildIndex(tileTag._Container, 0);
+                allTiles.Remove(tileTag);
+                allTiles.Insert(0, tileTag);
+
+                newTiles.Add((tileTag, added[i].ThumbnailPath));
+            }
+            flowLayoutGallery.ResumeLayout(true);
+
+            foreach (var (tileTag, thumbPath) in newTiles)
+            {
+                var captured = tileTag;
+                Task.Run(() =>
+                {
+                    try
+                    {
+                        var bmp = Util.LoadImage(thumbPath);
+                        flowLayoutGallery.BeginInvoke(() =>
+                        {
+                            if (captured._PictureBox.Tag != captured) { bmp.Dispose(); return; }
+                            captured._PictureBox.Image?.Dispose();
+                            captured._PictureBox.Image = bmp;
+                        });
+                    }
+                    catch { }
+                });
             }
         }
 
