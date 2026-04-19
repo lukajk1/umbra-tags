@@ -222,10 +222,20 @@ namespace Calypso
             Gallery.ZoomFromWheel(e);
         }
 
+        private static readonly Size DefaultWindowedSize = new Size(1100, 720);
+
         public void LoadSession(Session session)
         {
-            this.Height = session.WindowHeight;
-            this.Width = session.WindowWidth;
+            // Use a sensible windowed size so Windows has a valid restore bound
+            // if the session was always maximized or is first-run.
+            var screen = Screen.FromControl(this).WorkingArea;
+            bool sizeValid = session.WindowWidth >= MinimumSize.Width
+                          && session.WindowHeight >= MinimumSize.Height
+                          && session.WindowWidth < screen.Width
+                          && session.WindowHeight < screen.Height;
+
+            var size = sizeValid ? new Size(session.WindowWidth, session.WindowHeight) : DefaultWindowedSize;
+            this.Size = size;
             this.checkBoxRandomize.Checked = session.RandomiseChecked;
             this.WindowState = session.WindowState;
             DB.appdata.ActiveLibrary = session.LastActiveLibrary;
