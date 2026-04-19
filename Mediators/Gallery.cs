@@ -22,8 +22,10 @@ namespace Calypso
 
         static List<ImageData> lastSearch = new();
         static List<TileTag> selectedTiles = new();
-        static List<TileTag> allTiles = new(); 
-        
+        static List<TileTag> allTiles = new();
+
+        static TileTag? lastSelected; 
+
         private static readonly Stack<PooledTile> pooledTiles = new();
 
         private static int pbPerRow = 0;
@@ -67,6 +69,8 @@ namespace Calypso
             flowLayoutGallery.DragDrop += flowLayoutGallery_DragDrop; 
             flowLayoutGallery.SizeChanged += FlowLayoutGallery_SizeChanged; 
             flowLayoutGallery.MouseWheel += FlowLayoutGallery_MouseWheel;
+
+            DB.OnNewLibraryLoaded += OnNewLibraryLoaded;
         }
 
         public static void Populate(List<ImageData> results)
@@ -78,7 +82,11 @@ namespace Calypso
             resultsCountLabel.Text = $"Results: {results.Count}";
             mainW.toolStripLabelThumbnailSize.Text = $"Thumbnail Height: {GlobalValues.DefaultThumbnailSize}px";
         }
-
+        public static void OnNewLibraryLoaded(Library lib)
+        {
+            selectedTiles.Clear();
+            lastSelected = null;
+        }
         private static PooledTile GetPooledTile()
         {
             return pooledTiles.Count > 0 ? pooledTiles.Pop() : new PooledTile();

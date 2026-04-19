@@ -180,6 +180,11 @@ namespace Calypso
                 Commands.AddFilesViaDialog();
                 return true;
             }
+            else if (keyData == (Keys.Control | Keys.E))
+            {
+                Gallery.OpenSelectedInExplorer();
+                return true;
+            }
             // arrow keys
             else if (keyData == Keys.Left || keyData == Keys.Right || keyData == Keys.Up || keyData == Keys.Down)
             {
