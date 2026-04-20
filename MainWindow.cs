@@ -106,7 +106,8 @@ namespace Calypso
                 windowState: this.WindowState,
                 lastActiveLibrary: DB.appdata.ActiveLibrary,
                 zoomModifier: Gallery.Zoom,
-                showFilenames: GlobalValues.ShowFilenames
+                showFilenames: GlobalValues.ShowFilenames,
+                lastSearch: searchBox.Text
             );
         }
 
@@ -120,7 +121,8 @@ namespace Calypso
                 windowState: this.WindowState,
                 lastActiveLibrary: lib,
                 zoomModifier: Gallery.Zoom,
-                showFilenames: GlobalValues.ShowFilenames
+                showFilenames: GlobalValues.ShowFilenames,
+                lastSearch: searchBox.Text
             );
         }
 

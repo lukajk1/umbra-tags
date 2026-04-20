@@ -42,7 +42,8 @@ namespace Calypso
             if (Load() || (appdata = NewAppdata()!) != null)
             {
                 mainW.LoadSession(appdata.LastSession);
-                LoadLibrary(appdata.LastSession.LastActiveLibrary);
+                LoadLibrary(appdata.LastSession.LastActiveLibrary, search: false);
+                Searchbar.Search(appdata.LastSession.LastSearch ?? "all");
                 return true;
             }
 
@@ -118,7 +119,7 @@ namespace Calypso
                 LoadLibrary(appdata.Libraries[index]);
             }
         }
-        public static void LoadLibrary(Library lib)
+        public static void LoadLibrary(Library lib, bool search = true)
         {
             appdata.ActiveLibrary = lib;
 
@@ -164,7 +165,7 @@ namespace Calypso
             Save();
             //Debug.WriteLine("hopefullythis works" + appdata.ActiveLibrary.filenameDict.Count);
 
-            Searchbar.Search("all"); // dependencies but whatever
+            if (search) Searchbar.Search("all");
 
             if (MainWindow.initialized)
             {
