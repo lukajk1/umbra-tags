@@ -194,6 +194,7 @@ namespace Calypso
 
             foreach (var kvp in appdata.ActiveLibrary.filenameDict)
             {
+                if (kvp.Value.IsArchived) continue;
                 allImages.Add(kvp.Value);
                 if (kvp.Value.Tags.Count == 0) untagged.Add(kvp.Value);
             }

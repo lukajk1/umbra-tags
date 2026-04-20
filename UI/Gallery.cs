@@ -324,14 +324,14 @@ namespace Calypso
             foreach (TileTag t in selectedTiles)
                 t._ImageData.IsArchived = true;
 
-            DB.Save();
-
             foreach (TileTag t in selectedTiles.ToList())
             {
                 flowLayoutGallery.Controls.Remove(t._Container);
                 allTiles.Remove(t);
             }
             selectedTiles.Clear();
+
+            DB.GenTagDictAndSaveLibrary();
         }
 
         public static void DeleteSelected()
