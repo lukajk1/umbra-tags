@@ -7,26 +7,16 @@ A Windows desktop image library manager built with WinForms (.NET 8).
 - Windows x64
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8)
 
-## Clone
+## Build from Source
 
 ```bash
 git clone https://github.com/lukajk1/calypso
-```
-
-## Build & Run
-
-```bash
-# Restore dependencies
+cd calypso
 dotnet restore
-
-# Build
-dotnet build
-
-# Run
-dotnet run
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
 
-Or open `Calypso.sln` in Visual Studio 2022+ and press F5.
+The executable will be at `bin/Release/net8.0-windows/publish/win-x64/Calypso.exe`.
 
 ## Dependencies
 
@@ -42,6 +32,9 @@ All packages restore automatically via NuGet.
 
 **Imazen.WebP** — Copyright 2012–2026 Imazen LLC  
 Licensed under the MIT License. https://github.com/imazen/libwebp-net
+
+**Newtonsoft.Json** — Copyright 2007 James Newton-King  
+Licensed under the MIT License. https://github.com/JamesNK/Newtonsoft.Json
 
 ## Supported File Types
 
