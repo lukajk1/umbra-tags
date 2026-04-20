@@ -68,6 +68,21 @@ namespace Calypso.UI
                 SetImmersiveDarkMode(f.Handle, dark);
                 f.Invalidate(true);
             }
+
+            // re-theme any floating context menus registered with us
+            foreach (var cms in _contextMenus)
+                ApplyContextMenu(cms);
+        }
+
+        private static readonly List<ContextMenuStrip> _contextMenus = new();
+
+        public static void ApplyContextMenu(ContextMenuStrip cms)
+        {
+            if (!_contextMenus.Contains(cms)) _contextMenus.Add(cms);
+            cms.BackColor = Theme.Surface;
+            cms.ForeColor = Theme.Foreground;
+            cms.Renderer  = new ThemedMenuRenderer();
+            ApplyMenuItems(cms.Items);
         }
 
         public static void Apply(Control root)

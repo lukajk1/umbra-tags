@@ -76,6 +76,7 @@ namespace Calypso
             imageContextMenuStrip = new ContextMenuStrip();
             imageContextMenuStrip.Items.AddRange(new ToolStripItem[]
                 { editTagsItem, showInFolderItem, new ToolStripSeparator(), archiveItem, deleteItem });
+            ThemeManager.ApplyContextMenu(imageContextMenuStrip);
 
             panel.ShowLabels  = PreferencesManager.Prefs.ShowFilenames;
             panel.TileSize    = GlobalValues.DefaultThumbnailSize;
