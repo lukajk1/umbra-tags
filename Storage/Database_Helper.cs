@@ -195,6 +195,8 @@ namespace Calypso
 
                 if (!File.Exists(fp)) continue;
 
+                if (lib.filenameDict.ContainsKey(fp)) continue;
+
                 // Check for similar images before importing
                 ulong incomingHash;
                 using (var bmp = Util.LoadImage(fp))
