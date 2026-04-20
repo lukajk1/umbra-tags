@@ -157,23 +157,29 @@ namespace Calypso
                 using (var bmp = Util.LoadImage(fp))
                     incomingHash = DHash.Compute(bmp);
 
-                var similar = lib.filenameDict.Values
-                    .FirstOrDefault(img => DHash.IsSimilar(incomingHash, img.DHash));
-                if (similar != null)
+                bool skipFile = false;
+                var dismissed = new HashSet<string>();
+                while (true)
                 {
+                    var similar = lib.filenameDict.Values
+                        .FirstOrDefault(img => DHash.IsSimilar(incomingHash, img.DHash)
+                                            && !dismissed.Contains(img.Filepath));
+                    if (similar == null) break;
+
                     using var modal = new PotentialDuplicateModal(fp, similar.Filepath);
                     modal.ShowDialog();
-                    if (modal.Action == DuplicateAction.Cancel) continue;
+                    if (modal.Action == DuplicateAction.Cancel) { skipFile = true; break; }
                     if (modal.Action == DuplicateAction.DeleteSource)
                     {
                         if (File.Exists(fp)) File.Delete(fp);
-                        continue;
+                        skipFile = true; break;
                     }
                     if (modal.Action == DuplicateAction.Replace)
-                    {
                         DeleteImageData(new List<ImageData> { similar });
-                    }
+                    else
+                        dismissed.Add(similar.Filepath); // ImportAnyway: skip this one next iteration
                 }
+                if (skipFile) continue;
 
                 string filename = Path.GetFileName(fp);
                 string destPath = Path.Combine(lib.Dirpath, filename);
@@ -187,6 +193,9 @@ namespace Calypso
                 }
 
                 File.Copy(fp, destPath);
+
+                if (PreferencesManager.Prefs.DeleteSourceOnDragIn)
+                    try { if (File.Exists(fp)) File.Delete(fp); } catch { }
 
                 if (lib.filenameDict.ContainsKey(destPath)) continue;
 
