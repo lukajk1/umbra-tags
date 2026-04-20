@@ -151,7 +151,10 @@ namespace Calypso
             flowLayoutGallery.ResumeLayout(true);
             CountPictureBoxesPerRow();
 
+            if (tiles.Count == 0) return;
+
             // Load images from disk in parallel, marshal each result back to the UI thread.
+            LoadProgress = 0.01f;
             int completed = 0;
             foreach (var (tileTag, thumbnailPath) in tiles)
             {

@@ -51,6 +51,7 @@ namespace Calypso
                 newTiles.Add((tileTag, added[i].ThumbnailPath));
             }
             flowLayoutGallery.ResumeLayout(true);
+            flowLayoutGallery.AutoScrollPosition = new Point(0, 0);
 
             foreach (var (tileTag, thumbPath) in newTiles)
             {
