@@ -61,6 +61,7 @@ namespace Calypso.UI
         private Point _dragStartPt = Point.Empty;
         private int _dragStartIndex = -1;
         private const int DragThreshold = 17;
+        public static bool IsDraggingOut { get; private set; }
 
         // ── colors ────────────────────────────────────────────────────────
 private static readonly Color SelectionColor    = Color.FromArgb(0, 120, 215);
@@ -448,8 +449,13 @@ private static readonly Color SelectionColor    = Color.FromArgb(0, 120, 215);
             if (files.Length == 0) return;
 
             _dragStartPt = Point.Empty;
+            IsDraggingOut = true;
+            Calypso.ImageInfoPanel.Freeze();
             ItemsDraggedOut?.Invoke(this, dragItems.ToArray());
             DoDragDrop(new DataObject(DataFormats.FileDrop, files), DragDropEffects.Copy);
+            IsDraggingOut = false;
+            Calypso.ImageInfoPanel.Unfreeze();
+            SelectionChanged?.Invoke(this, EventArgs.Empty);
         }
 
         protected override void OnMouseUp(MouseEventArgs e) => base.OnMouseUp(e);

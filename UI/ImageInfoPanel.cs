@@ -22,6 +22,7 @@ namespace Calypso
 
         private static CancellationTokenSource? _loadCts;
         private static Bitmap? _currentFullRes;
+        private static Bitmap? _frozenSnapshot;
 
         public static void Init(MainWindow mainW)
         {
@@ -58,6 +59,7 @@ namespace Calypso
 
         public static void Display(ImageData imgData)
         {
+            if (Calypso.UI.VirtualGalleryPanel.IsDraggingOut) return;
             if (imgData == displayedImage) return;
             displayedImage = imgData;
 
@@ -94,6 +96,27 @@ namespace Calypso
                 }
                 catch { }
             }, token);
+        }
+
+        public static void Freeze()
+        {
+            if (pictureBox?.Image == null) return;
+            // snapshot the current display at its current rendered size, switch to Normal so it won't rescale
+            var snap = new Bitmap(pictureBox.Image, pictureBox.ClientSize);
+            _frozenSnapshot = snap;
+            pictureBox.SizeMode = PictureBoxSizeMode.Normal;
+            pictureBox.Image = snap;
+        }
+
+        public static void Unfreeze()
+        {
+            if (pictureBox == null) return;
+            pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+            // restore the real full-res image so Zoom mode can re-letterbox it correctly
+            if (_currentFullRes != null)
+                pictureBox.Image = _currentFullRes;
+            _frozenSnapshot?.Dispose();
+            _frozenSnapshot = null;
         }
 
         public static void Clear()
