@@ -87,6 +87,7 @@
             removeTagToolStripMenuItem = new ToolStripMenuItem();
             addChildTagToolStripMenuItem = new ToolStripMenuItem();
             deleteToolStripMenuItem = new ToolStripMenuItem();
+            exportTagsToCSV = new ToolStripMenuItem();
             menuStrip1.SuspendLayout();
             statusStrip1.SuspendLayout();
             searchPanel.SuspendLayout();
@@ -122,7 +123,7 @@
             // 
             // fileToolStripMenuItem
             // 
-            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { addNewLibraryToolStripMenuItem, openExistingLibraryToolStripMenuItem, toolStripMenuItem1, exitToolStripMenuItem });
+            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { addNewLibraryToolStripMenuItem, openExistingLibraryToolStripMenuItem, toolStripMenuItem1, exportTagsToCSV, exitToolStripMenuItem });
             fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             fileToolStripMenuItem.Size = new Size(37, 20);
             fileToolStripMenuItem.Text = "&File";
@@ -614,6 +615,13 @@
             deleteToolStripMenuItem.Text = "Delete";
             deleteToolStripMenuItem.Click += deleteToolStripMenuItem_Click;
             // 
+            // exportTagsToCSV
+            // 
+            exportTagsToCSV.Name = "exportTagsToCSV";
+            exportTagsToCSV.Size = new Size(288, 22);
+            exportTagsToCSV.Text = "Export Tags to CSV";
+            exportTagsToCSV.Click += exportTagsToCSV_Click;
+            // 
             // MainWindow
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -716,5 +724,6 @@
         private ToolStripMenuItem toolStripMenuItem11;
         private ToolStripMenuItem showManual;
         private Button searchButton;
+        private ToolStripMenuItem exportTagsToCSV;
     }
 }

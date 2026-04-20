@@ -249,5 +249,45 @@ namespace Calypso
         {
             new Preferences().ShowDialog();
         }
+
+        private void exportTagsToCSV_Click(object sender, EventArgs e)
+        {
+            var lib = DB.appdata?.ActiveLibrary;
+            if (lib == null) { Util.ShowErrorDialog("No active library."); return; }
+
+            using var dlg = new FolderBrowserDialog
+            {
+                Description = "Choose export folder",
+                UseDescriptionForTitle = true
+            };
+            if (dlg.ShowDialog() != DialogResult.OK) return;
+
+            string path = Path.Combine(dlg.SelectedPath,
+                $"{lib.Name}_tags_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
+
+            try
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("filepath,tags");
+
+                foreach (var img in lib.filenameDict.Values)
+                {
+                    var tags = lib.tagDict
+                        .Where(kv => kv.Value.Contains(img))
+                        .Select(kv => kv.Key);
+
+                    string tagList = string.Join("|", tags);
+                    sb.AppendLine($"\"{img.Filepath}\",\"{tagList}\"");
+                }
+
+                File.WriteAllText(path, sb.ToString(), System.Text.Encoding.UTF8);
+                MessageBox.Show($"Exported to:\n{path}", "Export complete",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                Util.ShowErrorDialog($"Export failed: {ex.Message}");
+            }
+        }
     }
 }
