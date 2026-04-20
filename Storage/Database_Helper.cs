@@ -15,6 +15,7 @@ namespace Calypso
         #region searching
         public static void Search(string searchTextRaw, bool randomize, int upperLimit)
         {
+            if (ActiveLibrary == null) return;
             List<ImageData> results = new();
             string[] tagsInclude = { };
             string[] tagsExclude = { };
@@ -23,7 +24,7 @@ namespace Calypso
 
             if (stripped == "randimg")
             {
-                var all = appdata.ActiveLibrary.filenameDict.Values.Where(img => !img.IsArchived).ToList();
+                var all = ActiveLibrary.filenameDict.Values.Where(img => !img.IsArchived).ToList();
                 if (all.Count > 0)
                 {
                     var img = all[new Random().Next(all.Count)];
@@ -35,19 +36,19 @@ namespace Calypso
             }
             else if (stripped == "archived")
             {
-                results = appdata.ActiveLibrary.filenameDict.Values.Where(img => img.IsArchived).ToList();
+                results = ActiveLibrary.filenameDict.Values.Where(img => img.IsArchived).ToList();
             }
             else
             {
-                if (appdata.ActiveLibrary.tagDict.ContainsKey(stripped))
+                if (ActiveLibrary.tagDict.ContainsKey(stripped))
                 {
-                    results = new List<ImageData>(appdata.ActiveLibrary.tagDict[stripped]);
+                    results = new List<ImageData>(ActiveLibrary.tagDict[stripped]);
 
-                    List<TagNode> children = appdata.ActiveLibrary.tagTree.GetAllChildren(stripped);
+                    List<TagNode> children = ActiveLibrary.tagTree.GetAllChildren(stripped);
 
                     foreach (TagNode child in children)
                     {
-                        if (appdata.ActiveLibrary.tagDict.TryGetValue(child.Name, out var imgs))
+                        if (ActiveLibrary.tagDict.TryGetValue(child.Name, out var imgs))
                             results.AddRange(imgs);
                     }
 
@@ -73,64 +74,13 @@ namespace Calypso
         }
         #endregion
 
-        public static void Save()
-        {
-            try
-            {
-                var settings = new JsonSerializerSettings
-                {
-                    PreserveReferencesHandling = PreserveReferencesHandling.Objects,
-                    Formatting = Formatting.Indented
-                };
-
-                string json = JsonConvert.SerializeObject(appdata, settings);
-
-                // write to temp file first so a crash mid-write leaves the real file intact
-                File.WriteAllText(appdataTempPath, json);
-
-                // roll current save → backup, then promote temp → save
-                if (File.Exists(appdataFilePath))
-                    File.Copy(appdataFilePath, appdataBackupPath, overwrite: true);
-
-                File.Move(appdataTempPath, appdataFilePath, overwrite: true);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Failed to save appdata: {ex.Message}");
-            }
-        }
-        private static bool Load()
-        {
-            try
-            {
-                var settings = new JsonSerializerSettings
-                {
-                    PreserveReferencesHandling = PreserveReferencesHandling.Objects
-                };
-
-                string json = File.ReadAllText(appdataFilePath);
-                appdata = JsonConvert.DeserializeObject<Appdata>(json, settings);
-
-                return appdata != null;
-            }
-            catch (Exception ex)
-            {
-                Util.ShowErrorDialog($"Failed to load appdata: {ex.Message}");
-                return false;
-            }
-        }
 
 
 
-        public static void OnClose(Session session)
-        {
-            appdata.LastSession = session;
-            Save();
-        }
 
         private static void BackfillDHashes()
         {
-            foreach (var img in appdata.ActiveLibrary.filenameDict.Values)
+            foreach (var img in ActiveLibrary.filenameDict.Values)
             {
                 if (img.DHash != 0) continue;
                 if (!File.Exists(img.Filepath)) continue;
@@ -159,7 +109,7 @@ namespace Calypso
                 }
             }
 
-            appdata.ActiveLibrary.FlushDeletedImages();
+            ActiveLibrary.FlushDeletedImages();
             GenTagDictAndSaveLibrary();
         }
         public static void AddNewLibrary()
@@ -170,29 +120,26 @@ namespace Calypso
             {
                 Util.TextPrompt("Name this library (can be changed later)", out string libName);
 
-                Library newLib = new Library(
-                    name: libName,
-                    dirpath: libraryPath
-                );
-
-                appdata.Libraries.Add(newLib);
+                var newLib  = new Library(libName, libraryPath);
+                var stub    = LibraryStub.FromLibrary(newLib);
+                appdata.Libraries.Add(stub);
                 LoadLibrary(newLib);
             }
         }
         public static void OpenCurrentLibrarySourceFolder()
         {
-            if (appdata.ActiveLibrary == null) return;
+            if (ActiveLibrary == null) return;
 
             Process.Start(new ProcessStartInfo
             {
-                FileName = appdata.ActiveLibrary.Dirpath,
+                FileName = ActiveLibrary.Dirpath,
                 UseShellExecute = true
             });
         }
 
         public static List<ImageData> AddFilesToLibrary(string[] filepaths)
         {
-            var lib = appdata.ActiveLibrary;
+            var lib = ActiveLibrary;
             var added = new List<ImageData>();
 
             foreach (string fp in filepaths)

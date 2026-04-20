@@ -74,7 +74,9 @@ namespace Calypso
                 byte[] bytes = File.ReadAllBytes(path);
                 return new SimpleDecoder().DecodeFromBytes(bytes, bytes.LongLength);
             }
-            return new Bitmap(path);
+            // Load via MemoryStream so GDI+ doesn't hold a file lock on the source
+            using var ms = new MemoryStream(File.ReadAllBytes(path));
+            return new Bitmap(ms);
         }
 
         public static string CreateThumbnail(Library lib, string originalImagePath)
@@ -136,7 +138,7 @@ namespace Calypso
                 if (File.Exists(filepath))
                 {
                     string filename = Path.GetFileName(filepath);
-                    string destFilepath = Path.Combine(DB.appdata.ActiveLibrary.Dirpath, filename);
+                    string destFilepath = Path.Combine(DB.ActiveLibrary.Dirpath, filename);
                     File.Copy(filepath, destFilepath, overwrite: false);
                 }
             }

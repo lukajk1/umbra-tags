@@ -26,19 +26,19 @@ namespace Calypso
         {
             RemovePlaceholders();
 
-            foreach (Library lib in DB.appdata.Libraries)
+            foreach (LibraryStub stub in DB.appdata.Libraries)
             {
-                int index = DB.appdata.Libraries.IndexOf(lib) + 1;
-                bool activeLib = (lib == DB.appdata.ActiveLibrary);
+                int index = DB.appdata.Libraries.IndexOf(stub) + 1;
+                bool activeLib = stub.Dirpath == DB.ActiveLibrary?.Dirpath;
 
-                ToolStripMenuItem newItem = new ToolStripMenuItem(activeLib ? $"{index} - {lib.Name} (Current)" : $"{index} - {lib.Name}");
+                ToolStripMenuItem newItem = new ToolStripMenuItem(activeLib ? $"{index} - {stub.Name} (Current)" : $"{index} - {stub.Name}");
 
-                var openSub = new ToolStripMenuItem("Open", null, (s, e) => HandleLibraryAction("open", lib));
+                var openSub = new ToolStripMenuItem("Open", null, (s, e) => HandleLibraryAction("open", stub));
                 if (activeLib) openSub.Enabled = false;
                 if (index < 10) openSub.ShortcutKeyDisplayString = $"Alt + {index}";
 
-                var renameSub = new ToolStripMenuItem("Rename", null, (s, e) => HandleLibraryAction("rename", lib));
-                var removeSub = new ToolStripMenuItem("Remove", null, (s, e) => HandleLibraryAction("remove", lib));
+                var renameSub = new ToolStripMenuItem("Rename", null, (s, e) => HandleLibraryAction("rename", stub));
+                var removeSub = new ToolStripMenuItem("Remove", null, (s, e) => HandleLibraryAction("remove", stub));
 
                 newItem.DropDownItems.Add(openSub);
                 newItem.DropDownItems.Add(renameSub);
@@ -47,17 +47,20 @@ namespace Calypso
                 mainW.openExistingLibraryToolStripMenuItem.DropDownItems.Insert(0, newItem);
             }
         }
-        static void HandleLibraryAction(string action, Library lib)
+        static void HandleLibraryAction(string action, LibraryStub stub)
         {
             switch (action)
             {
                 case "open":
-                    DB.LoadLibrary(lib);
+                    DB.LoadLibrary(stub);
                     break;
                 case "rename":
-                    if (Util.TextPrompt("Set new library name: ", out string result, lib.Name))
+                    if (Util.TextPrompt("Set new library name: ", out string result, stub.Name))
                     {
-                        lib.Name = result;
+                        stub.Name = result;
+                        if (DB.ActiveLibrary?.Dirpath == stub.Dirpath)
+                            DB.ActiveLibrary.Name = result;
+                        DB.Save();
                         LoadLibraryUI();
                     }
                     break;
@@ -68,14 +71,15 @@ namespace Calypso
                         break;
                     }
 
-                    int index = DB.appdata.Libraries.IndexOf(lib);
+                    int index = DB.appdata.Libraries.IndexOf(stub);
                     if (index != -1)
                     {
                         int nextIndex = (index + 1) % DB.appdata.Libraries.Count;
-                        var nextItem = DB.appdata.Libraries[nextIndex];
+                        var nextStub = DB.appdata.Libraries[nextIndex];
 
-                        DB.LoadLibrary(nextItem);
-                        DB.appdata.Libraries.Remove(lib);
+                        DB.LoadLibrary(nextStub);
+                        DB.appdata.Libraries.Remove(stub);
+                        DB.SaveAppdata();
                         LoadLibraryUI();
                     }
 

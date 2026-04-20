@@ -76,11 +76,11 @@ namespace Calypso
             if (keyData == (Keys.Control | Keys.N)) { DB.AddNewLibrary(); return true; }
             if (keyData == (Keys.Control | Keys.I)) { Commands.AddFilesViaDialog(); return true; }
             if (keyData == (Keys.Control | Keys.E)) { Gallery.OpenSelectedInExplorer(); return true; }
-            if (keyData == (Keys.Control | Keys.K)) { DB.appdata.ActiveLibrary.FlushTagDictDuplicates(); return true; }
+            if (keyData == (Keys.Control | Keys.K)) { DB.ActiveLibrary.FlushTagDictDuplicates(); return true; }
             if (keyData == (Keys.Control | Keys.T))
             {
                 if (Util.TextPrompt("Set tag name: ", out string newTag))
-                    DB.appdata.ActiveLibrary.AddTagToTree(new TagNode(newTag));
+                    DB.ActiveLibrary.AddTagToTree(new TagNode(newTag));
                 return true;
             }
 

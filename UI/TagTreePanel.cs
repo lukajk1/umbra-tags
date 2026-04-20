@@ -37,7 +37,7 @@ namespace Calypso
             menu.Items.Insert(0, pinItem);
             menu.Items.Insert(menu.Items.IndexOf(mainW.deleteToolStripMenuItem), new ToolStripSeparator());
 
-            Populate(DB.appdata.ActiveLibrary.tagTree, DB.appdata.ActiveLibrary.tagDict);
+            Populate(DB.ActiveLibrary.tagTree, DB.ActiveLibrary.tagDict);
         }
 
         public void Populate(TagTree tagTreeRefactor, Dictionary<string, List<ImageData>> tagDict)
@@ -188,7 +188,7 @@ namespace Calypso
 
             if (Util.TextPrompt("Set new tag name: ", out string newName, tagNode.Name))
             {
-                DB.appdata.ActiveLibrary.RenameTag(tagNode.Name, newName);
+                DB.ActiveLibrary.RenameTag(tagNode.Name, newName);
                 
             }
 
@@ -203,7 +203,7 @@ namespace Calypso
             if (selectedNode.Tag is TagNode tn)
             {
                 //Util.ShowInfoDialog("delete" + tn.Name);
-                DB.appdata.ActiveLibrary.DeleteTagFromTree(tn.Name);
+                DB.ActiveLibrary.DeleteTagFromTree(tn.Name);
 
             }
         }
@@ -212,7 +212,7 @@ namespace Calypso
         {
             if (selectedNode?.Tag is not TagNode tagNode) return;
             tagNode.Pinned = !tagNode.Pinned;
-            DB.appdata.ActiveLibrary.RefreshTagStructure();
+            DB.ActiveLibrary.RefreshTagStructure();
         }
 
         public  void AddChildTag(object sender)
@@ -225,7 +225,7 @@ namespace Calypso
                     var newTag = new TagNode(name, parentNode.Name, parentNode.Depth + 1);
                     //Util.ShowInfoDialog($"newtag depth : {newTag.Depth}");
 
-                    DB.appdata.ActiveLibrary.AddTagToTree(newTag);
+                    DB.ActiveLibrary.AddTagToTree(newTag);
                 }
             }
         }

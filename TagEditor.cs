@@ -71,7 +71,7 @@ namespace Calypso
                 .Select(t => t.ImageData.Tags)
                 .Aggregate((prev, next) => prev.Intersect(next).ToList());
 
-            GenerateTagTree(DB.appdata.ActiveLibrary.tagTree, DB.appdata.ActiveLibrary.tagDict);
+            GenerateTagTree(DB.ActiveLibrary.tagTree, DB.ActiveLibrary.tagDict);
 
         }
         public void GenerateTagTree(TagTree tagTreeRefactor, Dictionary<string, List<ImageData>> tagDict)
@@ -162,7 +162,7 @@ namespace Calypso
                         toRemove.Add(tag);
                 }
                 foreach (string tag in toRemove)
-                    DB.appdata.ActiveLibrary.UntagImage(tag, item.ImageData);
+                    DB.ActiveLibrary.UntagImage(tag, item.ImageData);
             }
 
             List<ImageData> images = selection.Select(it => it.ImageData).ToList();
@@ -170,7 +170,7 @@ namespace Calypso
             // tag images with each tag from checkedtags
             foreach (string tag in tagsToAdd)
             {
-                DB.appdata.ActiveLibrary.TagImages(tag, images);
+                DB.ActiveLibrary.TagImages(tag, images);
             }
 
             DB.GenTagDictAndSaveLibrary();

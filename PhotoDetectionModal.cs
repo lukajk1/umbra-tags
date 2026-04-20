@@ -11,7 +11,7 @@ namespace Calypso
 
         public static void Run()
         {
-            var lib = DB.appdata?.ActiveLibrary;
+            var lib = DB.ActiveLibrary;
             if (lib == null || lib.filenameDict.Count == 0)
             {
                 MessageBox.Show("No active library.", "Photo Detection",

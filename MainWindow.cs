@@ -149,7 +149,6 @@ namespace Calypso
             this.Size = size;
             this.checkBoxRandomize.Checked = session.RandomiseChecked;
             this.WindowState = session.WindowState;
-            DB.appdata.ActiveLibrary = session.LastActiveLibrary;
             Gallery.Zoom = session.ZoomModifier;
             if (session.LastActiveLibrary != null)
                 UpdateTitle(session.LastActiveLibrary.Name);
@@ -174,19 +173,6 @@ namespace Calypso
                 randomiseChecked: this.checkBoxRandomize.Checked,
                 windowState: this.WindowState,
                 lastActiveLibrary: DB.appdata.ActiveLibrary,
-                zoomModifier: Gallery.Zoom,
-                lastSearch: searchBox.Text
-            );
-        }
-
-        public Session CaptureCurrentSession(Library lib)
-        {
-            return new Session(
-                windowHeight: this.Height,
-                windowWidth: this.Width,
-                randomiseChecked: this.checkBoxRandomize.Checked,
-                windowState: this.WindowState,
-                lastActiveLibrary: lib,
                 zoomModifier: Gallery.Zoom,
                 lastSearch: searchBox.Text
             );
@@ -224,13 +210,13 @@ namespace Calypso
         private void addNewTagToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (Util.TextPrompt("Set tag name: ", out string newTag))
-                DB.appdata.ActiveLibrary.AddTagToTree(new TagNode(newTag));
+                DB.ActiveLibrary.AddTagToTree(new TagNode(newTag));
         }
 
         private void addTagButton_Click(object sender, EventArgs e)
         {
             if (Util.TextPrompt("Set tag name: ", out string newTag))
-                DB.appdata.ActiveLibrary.AddTagToTree(new TagNode(newTag));
+                DB.ActiveLibrary.AddTagToTree(new TagNode(newTag));
         }
 
         private void searchButton_Click(object sender, EventArgs e)
@@ -252,7 +238,7 @@ namespace Calypso
 
         private void exportTagsToCSV_Click(object sender, EventArgs e)
         {
-            var lib = DB.appdata?.ActiveLibrary;
+            var lib = DB.ActiveLibrary;
             if (lib == null) { Util.ShowErrorDialog("No active library."); return; }
 
             using var dlg = new FolderBrowserDialog

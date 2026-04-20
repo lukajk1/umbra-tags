@@ -12,12 +12,12 @@ namespace Calypso
         public int WindowHeight { get; set; }
         public bool RandomiseChecked { get; set; }
         public FormWindowState WindowState { get; set; }
-        public Library LastActiveLibrary { get; set; }
+        public LibraryStub? LastActiveLibrary { get; set; }
         public int ZoomModifier { get; set; }
         public string LastSearch { get; set; } = "all";
 
         public Session(int windowWidth, int windowHeight, bool randomiseChecked,
-                    FormWindowState windowState, Library lastActiveLibrary, int zoomModifier,
+                    FormWindowState windowState, LibraryStub? lastActiveLibrary, int zoomModifier,
                     string lastSearch = "all")
         {
             WindowWidth = windowWidth;
