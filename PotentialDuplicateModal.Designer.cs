@@ -38,6 +38,7 @@
             filename2 = new Label();
             res2 = new Label();
             res1 = new Label();
+            button1 = new Button();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox2).BeginInit();
             SuspendLayout();
@@ -69,17 +70,17 @@
             // 
             // button2
             // 
-            button2.Location = new Point(144, 380);
+            button2.Location = new Point(143, 401);
             button2.Name = "button2";
             button2.Size = new Size(178, 23);
             button2.TabIndex = 4;
-            button2.Text = "Replace the Image";
+            button2.Text = "Replace Existing Image";
             button2.UseVisualStyleBackColor = true;
             button2.Click += buttonReplace_Click;
             // 
             // button3
             // 
-            button3.Location = new Point(144, 439);
+            button3.Location = new Point(143, 460);
             button3.Name = "button3";
             button3.Size = new Size(178, 23);
             button3.TabIndex = 5;
@@ -89,7 +90,7 @@
             // 
             // button4
             // 
-            button4.Location = new Point(144, 409);
+            button4.Location = new Point(143, 430);
             button4.Name = "button4";
             button4.Size = new Size(178, 23);
             button4.TabIndex = 6;
@@ -129,11 +130,22 @@
             res1.TabIndex = 10;
             res1.Text = "resolution:";
             // 
+            // button1
+            // 
+            button1.Location = new Point(143, 372);
+            button1.Name = "button1";
+            button1.Size = new Size(178, 23);
+            button1.TabIndex = 11;
+            button1.Text = "Delete Incoming Image";
+            button1.UseVisualStyleBackColor = true;
+            button1.Click += buttonDeleteSource_Click;
+            // 
             // PotentialDuplicateModal
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(479, 490);
+            Controls.Add(button1);
             Controls.Add(res1);
             Controls.Add(res2);
             Controls.Add(filename2);
@@ -165,5 +177,6 @@
         private Label filename2;
         private Label res2;
         private Label res1;
+        private Button button1;
     }
 }

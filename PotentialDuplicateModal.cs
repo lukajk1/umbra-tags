@@ -10,7 +10,7 @@ using System.Windows.Forms;
 
 namespace Calypso
 {
-    public enum DuplicateAction { Cancel, ImportAnyway, Replace }
+    public enum DuplicateAction { Cancel, ImportAnyway, Replace, DeleteSource }
 
     public partial class PotentialDuplicateModal : Form
     {
@@ -60,6 +60,12 @@ namespace Calypso
         private void buttonCancel_Click(object sender, EventArgs e)
         {
             Action = DuplicateAction.Cancel;
+            Close();
+        }
+
+        private void buttonDeleteSource_Click(object sender, EventArgs e)
+        {
+            Action = DuplicateAction.DeleteSource;
             Close();
         }
 
