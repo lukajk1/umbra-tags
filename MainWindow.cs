@@ -27,6 +27,7 @@ namespace Calypso
             this.BackColor = Theme.Background;
             this.ForeColor = Theme.Foreground;
             ThemeManager.SetImmersiveDarkMode(this.Handle, Theme.IsDark);
+            AddImportWizardMenuItem();
             AddThemeMenu();
             this.KeyPreview = true;
             this.FormClosed += MainWindow_FormClosed;
@@ -50,6 +51,16 @@ namespace Calypso
             new TagTreePanel(this);
             LibraryUIManager.Init(this);
             initialized = true;
+        }
+
+        private void AddImportWizardMenuItem()
+        {
+            var item = new ToolStripMenuItem("Import from Downloads...");
+            item.Click += (_, _) => ImportWizardModal.RunFromDownloads();
+            fileToolStripMenuItem.DropDownItems.Insert(0, item);
+            fileToolStripMenuItem.DropDownItems.Insert(1, new ToolStripSeparator());
+            // re-theme the new items
+            Calypso.UI.ThemeManager.Apply(menuStrip1);
         }
 
         private void AddThemeMenu()
@@ -215,6 +226,11 @@ namespace Calypso
         {
             if (Util.TextPrompt("Set tag name: ", out string newTag))
                 DB.appdata.ActiveLibrary.AddTagToTree(new TagNode(newTag));
+        }
+
+        private void searchButton_Click(object sender, EventArgs e)
+        {
+            Searchbar.Search(searchBox.Text);
         }
 
         private void hideFilenamesToolStripMenuItem_Click(object sender, EventArgs e)

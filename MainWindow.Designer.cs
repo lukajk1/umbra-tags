@@ -53,6 +53,7 @@
             hideFilenamesToolStripMenuItem = new ToolStripMenuItem();
             testToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
+            showManual = new ToolStripMenuItem();
             tagToolStripMenuItem = new ToolStripMenuItem();
             addNewTagToolStripMenuItem = new ToolStripMenuItem();
             galleryPanel = new Calypso.UI.VirtualGalleryPanel();
@@ -69,6 +70,7 @@
             ContentPanel = new ToolStripContentPanel();
             tagTree = new TreeView();
             searchPanel = new Panel();
+            searchButton = new Button();
             comboBoxResultsNum = new ComboBox();
             checkBoxRandomize = new CheckBox();
             tableLayoutImageInfo = new TableLayoutPanel();
@@ -85,7 +87,6 @@
             removeTagToolStripMenuItem = new ToolStripMenuItem();
             addChildTagToolStripMenuItem = new ToolStripMenuItem();
             deleteToolStripMenuItem = new ToolStripMenuItem();
-            showManual = new ToolStripMenuItem();
             menuStrip1.SuspendLayout();
             statusStrip1.SuspendLayout();
             searchPanel.SuspendLayout();
@@ -269,9 +270,15 @@
             // aboutToolStripMenuItem
             // 
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            aboutToolStripMenuItem.Size = new Size(180, 22);
+            aboutToolStripMenuItem.Size = new Size(152, 22);
             aboutToolStripMenuItem.Text = "&About Calypso";
             aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
+            // 
+            // showManual
+            // 
+            showManual.Name = "showManual";
+            showManual.Size = new Size(152, 22);
+            showManual.Text = "Show Manual";
             // 
             // tagToolStripMenuItem
             // 
@@ -287,14 +294,18 @@
             addNewTagToolStripMenuItem.Size = new Size(192, 22);
             addNewTagToolStripMenuItem.Text = "&Add New Tag";
             addNewTagToolStripMenuItem.Click += addNewTagToolStripMenuItem_Click;
-            //
+            // 
             // galleryPanel
-            //
+            // 
+            galleryPanel.AllowDrop = true;
+            galleryPanel.BackColor = Color.FromArgb(28, 28, 28);
             galleryPanel.Dock = DockStyle.Fill;
             galleryPanel.Location = new Point(0, 53);
             galleryPanel.Name = "galleryPanel";
+            galleryPanel.ShowLabels = true;
             galleryPanel.Size = new Size(705, 762);
             galleryPanel.TabIndex = 7;
+            galleryPanel.TileSize = 150;
             // 
             // searchBox
             // 
@@ -393,6 +404,7 @@
             // 
             searchPanel.BackColor = SystemColors.ControlLight;
             searchPanel.BorderStyle = BorderStyle.FixedSingle;
+            searchPanel.Controls.Add(searchButton);
             searchPanel.Controls.Add(comboBoxResultsNum);
             searchPanel.Controls.Add(checkBoxRandomize);
             searchPanel.Controls.Add(searchBox);
@@ -402,24 +414,35 @@
             searchPanel.Size = new Size(705, 53);
             searchPanel.TabIndex = 12;
             // 
+            // searchButton
+            // 
+            searchButton.Location = new Point(355, 14);
+            searchButton.Name = "searchButton";
+            searchButton.Size = new Size(75, 23);
+            searchButton.TabIndex = 14;
+            searchButton.Text = "Search";
+            searchButton.UseVisualStyleBackColor = true;
+            searchButton.Click += searchButton_Click;
+            // 
             // comboBoxResultsNum
             // 
             comboBoxResultsNum.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBoxResultsNum.FormattingEnabled = true;
             comboBoxResultsNum.Items.AddRange(new object[] { "All", "25", "50" });
-            comboBoxResultsNum.Location = new Point(446, 14);
+            comboBoxResultsNum.Location = new Point(610, 13);
             comboBoxResultsNum.Name = "comboBoxResultsNum";
             comboBoxResultsNum.Size = new Size(51, 23);
             comboBoxResultsNum.TabIndex = 13;
+            comboBoxResultsNum.Visible = false;
             // 
             // checkBoxRandomize
             // 
             checkBoxRandomize.AutoSize = true;
-            checkBoxRandomize.Location = new Point(355, 15);
+            checkBoxRandomize.Location = new Point(436, 17);
             checkBoxRandomize.Name = "checkBoxRandomize";
-            checkBoxRandomize.Size = new Size(85, 19);
+            checkBoxRandomize.Size = new Size(158, 19);
             checkBoxRandomize.TabIndex = 12;
-            checkBoxRandomize.Text = "Randomize";
+            checkBoxRandomize.Text = "Randomize Results Order";
             checkBoxRandomize.UseVisualStyleBackColor = true;
             checkBoxRandomize.CheckedChanged += checkBoxRandomize_CheckedChanged;
             // 
@@ -591,12 +614,6 @@
             deleteToolStripMenuItem.Text = "Delete";
             deleteToolStripMenuItem.Click += deleteToolStripMenuItem_Click;
             // 
-            // showManual
-            // 
-            showManual.Name = "showManual";
-            showManual.Size = new Size(180, 22);
-            showManual.Text = "Show Manual";
-            // 
             // MainWindow
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -618,7 +635,6 @@
             searchPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBoxImagePreview).EndInit();
             middleFillPanelContainer.ResumeLayout(false);
-            middleFillPanelContainer.PerformLayout();
             tagTreeGallerySplitContainer.Panel1.ResumeLayout(false);
             tagTreeGallerySplitContainer.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)tagTreeGallerySplitContainer).EndInit();
@@ -699,5 +715,6 @@
         private ToolStripMenuItem editToolStripMenuItem;
         private ToolStripMenuItem toolStripMenuItem11;
         private ToolStripMenuItem showManual;
+        private Button searchButton;
     }
 }

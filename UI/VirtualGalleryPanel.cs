@@ -79,13 +79,10 @@ namespace Calypso.UI
         private int _loadedCount = 0;
         public event EventHandler<float>? LoadProgressChanged;
 
-        [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
-        private static extern int SetWindowTheme(IntPtr hwnd, string pszSubAppName, string? pszSubIdList);
-
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            SetWindowTheme(Handle, "DarkMode_Explorer", null);
+            ThemeManager.ApplyScrollbarTheme(Handle);
         }
 
         public VirtualGalleryPanel()

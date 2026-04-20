@@ -124,6 +124,8 @@ namespace Calypso.UI
                     tv.BackColor   = Theme.Surface;
                     tv.ForeColor   = Theme.Foreground;
                     tv.BorderStyle = BorderStyle.None;
+                    if (tv.IsHandleCreated) ApplyScrollbarTheme(tv.Handle);
+                    else tv.HandleCreated += (s, _) => ApplyScrollbarTheme(((Control)s!).Handle);
                     break;
 
                 case TextBox tb:
@@ -219,6 +221,14 @@ namespace Calypso.UI
         {
             int value = dark ? 1 : 0;
             DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref value, sizeof(int));
+        }
+
+        [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+        private static extern int SetWindowTheme(IntPtr hwnd, string pszSubAppName, string? pszSubIdList);
+
+        internal static void ApplyScrollbarTheme(IntPtr hwnd)
+        {
+            SetWindowTheme(hwnd, Theme.IsDark ? "DarkMode_Explorer" : "Explorer", null);
         }
     }
 

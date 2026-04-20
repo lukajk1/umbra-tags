@@ -1,4 +1,4 @@
-# Calypso Image Manager
+# Umbra Tags
 
 A Windows desktop image library manager built with WinForms (.NET 8).
 
