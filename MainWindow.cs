@@ -24,7 +24,7 @@ namespace Calypso
             this.KeyPreview = true;
             this.FormClosed += MainWindow_FormClosed;
             this.MouseWheel += MainWindow_MouseWheel;
-            this.Text = $"Calypso {GlobalValues.Version}";
+            this.Text = $"Calypso {GlobalValues.Version} - ...";
 
             Activate();
             Focus();
@@ -92,6 +92,8 @@ namespace Calypso
             this.WindowState = session.WindowState;
             DB.appdata.ActiveLibrary = session.LastActiveLibrary;
             Gallery.Zoom = session.ZoomModifier;
+            if (session.LastActiveLibrary != null)
+                UpdateTitle(session.LastActiveLibrary.Name);
         }
 
         private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)

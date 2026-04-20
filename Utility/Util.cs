@@ -84,11 +84,14 @@ namespace Calypso
             string originalFilename = Path.GetFileName(originalImagePath);
             string thumbDir = Path.Combine(lib.Dirpath, "data");
 
-            // WebP thumbnails are stored as PNG since GDI+ cannot write WebP
+            // WebP and JFIF thumbnails are stored as PNG/JPG since GDI+ cannot write them directly
             bool isWebP = originalFilename.EndsWith(".webp", StringComparison.OrdinalIgnoreCase);
+            bool isJfif = originalFilename.EndsWith(".jfif", StringComparison.OrdinalIgnoreCase);
             string thumbFilename = isWebP
                 ? "thumb_" + Path.GetFileNameWithoutExtension(originalFilename) + ".png"
-                : "thumb_" + originalFilename;
+                : isJfif
+                    ? "thumb_" + Path.GetFileNameWithoutExtension(originalFilename) + ".jpg"
+                    : "thumb_" + originalFilename;
             string thumbSavePath = Path.Combine(thumbDir, thumbFilename);
 
             using Image thumb = CreateThumbnail(originalImagePath, GlobalValues.ThumbnailSize);
