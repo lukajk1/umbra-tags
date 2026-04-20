@@ -87,9 +87,18 @@ namespace Calypso
                 splitContainer.Panel2Collapsed = !value;
         }
 
-        public static void TogglePanel(SplitContainer splitContainer, int panelNumber) 
+        public static void TogglePanel(SplitContainer splitContainer, int panelNumber)
         {
             SetPanel(splitContainer, panelNumber, panelNumber == 1? splitContainer.Panel1Collapsed : splitContainer.Panel2Collapsed);
+        }
+
+        public static void AutoSizeInfoPanel(TableLayoutPanel infoTable)
+        {
+            if (ImageInfoSplitContainer == null || ImageInfoSplitContainer.Panel2Collapsed) return;
+            int contentHeight = infoTable.GetPreferredSize(new Size(ImageInfoSplitContainer.Width, 0)).Height;
+            int maxDistance = ImageInfoSplitContainer.Height - ImageInfoSplitContainer.SplitterWidth - contentHeight;
+            int minPreview = 100;
+            ImageInfoSplitContainer.SplitterDistance = Math.Max(minPreview, maxDistance);
         }
 
 

@@ -65,10 +65,16 @@ namespace Calypso
         {
             Gallery.mainW = mainW;
             Gallery.flowLayoutGallery = mainW.flowLayoutGallery;
-            Gallery.imageContextMenuStrip = mainW.imageContextMenuStrip;  
             Gallery.pictureBoxPreview = mainW.pictureBoxImagePreview;
             Gallery.selectedCountLabel = mainW.selectedCountLabel;
             Gallery.resultsCountLabel = mainW.statusLabelResultsCount;
+
+            var editTagsItem = new ToolStripMenuItem("Edit Tags");
+            editTagsItem.Click += (s, e) => OpenTagEditorByCommand();
+            var deleteItem = new ToolStripMenuItem("Delete");
+            deleteItem.Click += (s, e) => DeleteSelected();
+            imageContextMenuStrip = new ContextMenuStrip();
+            imageContextMenuStrip.Items.AddRange(new ToolStripItem[] { editTagsItem, deleteItem });
 
             flowLayoutGallery.AllowDrop = true;
             flowLayoutGallery.DragEnter += flowLayoutGallery_DragEnter;
@@ -275,6 +281,7 @@ namespace Calypso
             tile.Container.Width = thumbSize + 10;
             tile.Container.Height = thumbSize + tile.Label.Height + 10;
             tile.Label.Text = imgData.Filename;
+            tile.Label.Visible = GlobalValues.ShowFilenames;
 
             TileTag tileTag = new TileTag
             {
@@ -376,6 +383,12 @@ namespace Calypso
                     });
                 }
             }
+        }
+
+        public static void RefreshTileLabels()
+        {
+            foreach (TileTag tTag in allTiles)
+                tTag._PooledTile.Label.Visible = GlobalValues.ShowFilenames;
         }
 
 

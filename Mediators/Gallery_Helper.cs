@@ -169,9 +169,9 @@ namespace Calypso
 
             //if (e.Button == MouseButtons.Left || e.Button == MouseButtons.Right) {}
 
-            if (e.Button == MouseButtons.Right && File.Exists(tTag._ImageData.Filepath))
+            if (e.Button == MouseButtons.Right)
             {
-                TagEditManager.Open(selectedTiles);
+                imageContextMenuStrip?.Show(pb, e.Location);
             }
         }
 

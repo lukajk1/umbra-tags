@@ -51,12 +51,9 @@ namespace Calypso
             labelFilesize  = new Label { Text = "--" };
 
             labelTags = new Label { Text = "--" };
-            labelTags.AutoSize = false;
-            labelTags.Dock = DockStyle.Fill;
+            labelTags.AutoSize = true;
             labelTags.TextAlign = ContentAlignment.TopLeft;
-            labelTags.MaximumSize = new Size(0, 0);
-            labelTags.Height = 100;
-
+            labelTags.MaximumSize = new Size(200, 0);
 
             tableLayoutImageInfo.Controls.Add(new Label { Text = "File Name" }, 0, 0);
             tableLayoutImageInfo.Controls.Add(labelFilename, 1, 0);
@@ -67,14 +64,8 @@ namespace Calypso
             tableLayoutImageInfo.Controls.Add(new Label { Text = "Size" }, 0, 2);
             tableLayoutImageInfo.Controls.Add(labelFilesize, 1, 2);
 
-            //tableLayoutImageInfo.Controls.Add(new Label { Text = "Date Created" }, 0, 3);
-            //tableLayoutImageInfo.Controls.Add(new Label { Text = "--" }, 1, 3);
-
-            //tableLayoutImageInfo.Controls.Add(new Label { Text = "Date Modified" }, 0, 4);
-            //tableLayoutImageInfo.Controls.Add(new Label { Text = "--" }, 1, 4);
-
-            tableLayoutImageInfo.Controls.Add(new Label { Text = "Tags" }, 0, 5);
-            tableLayoutImageInfo.Controls.Add(labelTags, 1, 5);
+            tableLayoutImageInfo.Controls.Add(new Label { Text = "Tags" }, 0, 3);
+            tableLayoutImageInfo.Controls.Add(labelTags, 1, 3);
         }
         public static void Display(ImageData imgData)
         {
@@ -105,6 +96,7 @@ namespace Calypso
             labelDimensions.Text = "--";
             labelFilesize.Text = "--";
             labelTags.Text = "--";
+            LayoutManager.AutoSizeInfoPanel(tableLayoutImageInfo);
         }
 
         public static void Refresh()
@@ -123,7 +115,8 @@ namespace Calypso
             string sizeStr = byteSize >= 1024 * 1024
                 ? $"{byteSize / (1024.0 * 1024.0):F1} MB"
                 : $"{byteSize / 1024.0:F1} KB";
-            labelFilesize.Text = sizeStr;   
+            labelFilesize.Text = sizeStr;
+            LayoutManager.AutoSizeInfoPanel(tableLayoutImageInfo);
         }
 
         private static void DrawImage(Image img)

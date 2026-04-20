@@ -88,6 +88,8 @@ namespace Calypso
             this.WindowState = session.WindowState;
             DB.appdata.ActiveLibrary = session.LastActiveLibrary;
             Gallery.Zoom = session.ZoomModifier;
+            GlobalValues.ShowFilenames = session.ShowFilenames;
+            hideFilenamesToolStripMenuItem.Checked = !session.ShowFilenames;
         }
 
         private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)
@@ -103,7 +105,8 @@ namespace Calypso
                 randomiseChecked: this.checkBoxRandomize.Checked,
                 windowState: this.WindowState,
                 lastActiveLibrary: DB.appdata.ActiveLibrary,
-                zoomModifier: Gallery.Zoom
+                zoomModifier: Gallery.Zoom,
+                showFilenames: GlobalValues.ShowFilenames
             );
         }
 
@@ -116,7 +119,8 @@ namespace Calypso
                 randomiseChecked: this.checkBoxRandomize.Checked,
                 windowState: this.WindowState,
                 lastActiveLibrary: lib,
-                zoomModifier: Gallery.Zoom
+                zoomModifier: Gallery.Zoom,
+                showFilenames: GlobalValues.ShowFilenames
             );
         }
 
@@ -126,7 +130,7 @@ namespace Calypso
         }
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string message = $"Calypso Image Manager {GlobalValues.Version}\nSupported file types: .jpg, .jpeg, .png, .bmp, .gif, .webp\nCreated by lukajk\n\nOpen Source Notices:\nImazen.WebP (MIT) — Copyright 2012–2026 Imazen LLC\nhttps://github.com/imazen/libwebp-net";
+            string message = $"Calypso Image Manager {GlobalValues.Version}\nSupported file types: .jpg, .jpeg, .png, .bmp, .gif, .webp\nCreated by lukajk\n\nOpen Source Notices:\nImazen.WebP (MIT) — Copyright 2012–2026 Imazen LLC\nhttps://github.com/imazen/libwebp-net\nNewtonsoft.Json (MIT) — Copyright 2007 James Newton-King\nhttps://github.com/JamesNK/Newtonsoft.Json";
             string title = "About Calypso";
             MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
@@ -213,6 +217,13 @@ namespace Calypso
             {
                 DB.appdata.ActiveLibrary.AddTagToTree(new TagNode(newTag));
             }
+        }
+
+        private void hideFilenamesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            GlobalValues.ShowFilenames = !GlobalValues.ShowFilenames;
+            hideFilenamesToolStripMenuItem.Checked = !GlobalValues.ShowFilenames;
+            Gallery.RefreshTileLabels();
         }
     }
 }
