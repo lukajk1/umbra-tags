@@ -54,6 +54,11 @@ namespace Calypso
             separator.NodeFont = new Font("Consolas", 8, FontStyle.Regular);
             tagTree.Nodes.Insert(0, separator);
 
+            int archivedCount = tagDict.ContainsKey("all") ? tagDict["all"].Count(img => img.IsArchived) : 0;
+            TreeNode nodeArchived = new TreeNode($"Archived ({archivedCount})");
+            nodeArchived.Tag = "archived";
+            tagTree.Nodes.Insert(0, nodeArchived);
+
             TreeNode nodeRandom = new TreeNode("Random Image");
             nodeRandom.Tag = "randimg";
             tagTree.Nodes.Insert(0, nodeRandom);
@@ -61,7 +66,8 @@ namespace Calypso
             TreeNode nodeNone = tagTree.Nodes.Insert(0, $"Untagged ({tagDict["untagged"].Count})");
             nodeNone.Tag = "untagged";
 
-            TreeNode nodeAll = tagTree.Nodes.Insert(0, $"All Images ({tagDict["all"].Count})");
+            int activeCount = tagDict.ContainsKey("all") ? tagDict["all"].Count(img => !img.IsArchived) : 0;
+            TreeNode nodeAll = tagTree.Nodes.Insert(0, $"All Images ({activeCount})");
             nodeAll.Tag = "all";
 
             tagTree.ExpandAll(); 

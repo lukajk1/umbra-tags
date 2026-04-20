@@ -73,10 +73,12 @@ namespace Calypso
             editTagsItem.Click += (s, e) => OpenTagEditorByCommand();
             var showInFolderItem = new ToolStripMenuItem("Show in Folder");
             showInFolderItem.Click += (s, e) => OpenSelectedInExplorer();
+            var archiveItem = new ToolStripMenuItem("Archive");
+            archiveItem.Click += (s, e) => ArchiveSelected();
             var deleteItem = new ToolStripMenuItem("Delete");
             deleteItem.Click += (s, e) => DeleteSelected();
             imageContextMenuStrip = new ContextMenuStrip();
-            imageContextMenuStrip.Items.AddRange(new ToolStripItem[] { editTagsItem, showInFolderItem, new ToolStripSeparator(), deleteItem });
+            imageContextMenuStrip.Items.AddRange(new ToolStripItem[] { editTagsItem, showInFolderItem, new ToolStripSeparator(), archiveItem, deleteItem });
 
             flowLayoutGallery.AllowDrop = true;
             flowLayoutGallery.DragEnter += flowLayoutGallery_DragEnter;
@@ -316,6 +318,21 @@ namespace Calypso
             tileTag._PictureBox.Image = Util.LoadImage(imgData.ThumbnailPath);
         }
 
+
+        public static void ArchiveSelected()
+        {
+            foreach (TileTag t in selectedTiles)
+                t._ImageData.IsArchived = true;
+
+            DB.Save();
+
+            foreach (TileTag t in selectedTiles.ToList())
+            {
+                flowLayoutGallery.Controls.Remove(t._Container);
+                allTiles.Remove(t);
+            }
+            selectedTiles.Clear();
+        }
 
         public static void DeleteSelected()
         {

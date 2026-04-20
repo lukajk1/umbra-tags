@@ -28,6 +28,7 @@ namespace Calypso
     {
         public string ThumbnailPath { get; }
         public ulong DHash { get; set; }
+        public bool IsArchived { get; set; } = false;
 
         public ImageData(string filepath, string thumbnailPath)
         {

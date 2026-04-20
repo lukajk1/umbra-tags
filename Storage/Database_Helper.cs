@@ -23,7 +23,7 @@ namespace Calypso
 
             if (stripped == "randimg")
             {
-                var all = appdata.ActiveLibrary.filenameDict.Values.ToList();
+                var all = appdata.ActiveLibrary.filenameDict.Values.Where(img => !img.IsArchived).ToList();
                 if (all.Count > 0)
                 {
                     var img = all[new Random().Next(all.Count)];
@@ -32,6 +32,10 @@ namespace Calypso
                     ImageInfoPanel.Display(img);
                     return;
                 }
+            }
+            else if (stripped == "archived")
+            {
+                results = appdata.ActiveLibrary.filenameDict.Values.Where(img => img.IsArchived).ToList();
             }
             else
             {
@@ -47,7 +51,7 @@ namespace Calypso
                             results.AddRange(imgs);
                     }
 
-                    results = results.Distinct().ToList();
+                    results = results.Distinct().Where(img => !img.IsArchived).ToList();
 
                     if (stripped == "untagged")
                         results = results.OrderByDescending(img => File.GetLastWriteTime(img.Filepath)).ToList();
