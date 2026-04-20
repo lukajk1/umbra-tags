@@ -127,9 +127,9 @@ namespace Calypso
             int totalW = btnW * 3 + gap * 2;
             int startX = (ClientSize.Width - totalW) / 2;
 
-            buttonYes = MakeButton("Yes", startX, btnY, btnW, btnH, Theme.Accent);
-            buttonNo  = MakeButton("No",  startX + btnW + gap, btnY, btnW, btnH);
-            buttonNoDelete = MakeButton("No && Delete", startX + (btnW + gap) * 2, btnY, btnW, btnH);
+            buttonNoDelete = MakeButton("No && Delete", startX, btnY, btnW, btnH);
+            buttonNo       = MakeButton("No",           startX + btnW + gap, btnY, btnW, btnH);
+            buttonYes      = MakeButton("Yes",          startX + (btnW + gap) * 2, btnY, btnW, btnH, Theme.Accent);
 
             buttonYes.Click      += ButtonYes_Click;
             buttonNo.Click       += ButtonNo_Click;
