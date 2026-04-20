@@ -84,7 +84,15 @@ namespace Calypso
                 };
 
                 string json = JsonConvert.SerializeObject(appdata, settings);
-                File.WriteAllText(appdataFilePath, json);
+
+                // write to temp file first so a crash mid-write leaves the real file intact
+                File.WriteAllText(appdataTempPath, json);
+
+                // roll current save → backup, then promote temp → save
+                if (File.Exists(appdataFilePath))
+                    File.Copy(appdataFilePath, appdataBackupPath, overwrite: true);
+
+                File.Move(appdataTempPath, appdataFilePath, overwrite: true);
             }
             catch (Exception ex)
             {

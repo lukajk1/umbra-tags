@@ -27,6 +27,10 @@ namespace Calypso
     {
         public static Appdata appdata;
         private static string appdataFilePath = string.Empty;
+        internal static string appdataBackupPath = string.Empty;
+        internal static string appdataTempPath   = string.Empty;
+
+        private static System.Windows.Forms.Timer? _autoSaveTimer;
 
         // events
         public static event Action<Library>? OnNewLibraryLoaded;
@@ -34,9 +38,15 @@ namespace Calypso
         public static bool Init(MainWindow mainW)
         {
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string myAppFolder = Path.Combine(appDataPath, "Calypso");
+            string myAppFolder = Path.Combine(appDataPath, "Umbra Tags");
             Directory.CreateDirectory(myAppFolder);
-            appdataFilePath = Path.Combine(myAppFolder, "database.save");
+            appdataFilePath   = Path.Combine(myAppFolder, "database.save");
+            appdataBackupPath = Path.Combine(myAppFolder, "database.save.bak");
+            appdataTempPath   = Path.Combine(myAppFolder, "database.save.tmp");
+
+            _autoSaveTimer = new System.Windows.Forms.Timer { Interval = 5 * 60 * 1000 };
+            _autoSaveTimer.Tick += (_, _) => Save();
+            _autoSaveTimer.Start();
 
             // exclamation is null-forgiving operator
             if (Load() || (appdata = NewAppdata()!) != null)
