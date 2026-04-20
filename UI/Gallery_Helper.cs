@@ -29,7 +29,7 @@ namespace Calypso
             List<ImageData> added = DB.AddFilesToLibrary(files);
             if (added.Count == 0) return;
 
-            if (DB.Prefs.DeleteSourceOnDragIn)
+            if (PreferencesManager.Prefs.DeleteSourceOnDragIn)
             {
                 foreach (string f in files)
                     if (File.Exists(f)) File.Delete(f);
@@ -177,7 +177,7 @@ namespace Calypso
 
             if (e.Button == MouseButtons.Right)
             {
-                if (DB.Prefs.RightClickBehavior == RightClickBehavior.TagEditor)
+                if (PreferencesManager.Prefs.RightClickBehavior == RightClickBehavior.TagEditor)
                     OpenTagEditorByCommand();
                 else
                     imageContextMenuStrip?.Show(pb, e.Location);

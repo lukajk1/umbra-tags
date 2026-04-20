@@ -69,7 +69,7 @@ namespace Calypso
         }
         #endregion
 
-        private static void Save()
+        public static void Save()
         {
             try
             {

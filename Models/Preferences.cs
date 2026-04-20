@@ -6,7 +6,7 @@ namespace Calypso
         TagEditor
     }
 
-    public class Preferences
+    public class AppPreferences
     {
         public bool ShowFilenames { get; set; } = true;
         public RightClickBehavior RightClickBehavior { get; set; } = RightClickBehavior.ContextMenu;

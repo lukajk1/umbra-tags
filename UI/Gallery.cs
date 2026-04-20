@@ -283,7 +283,7 @@ namespace Calypso
             tile.Container.Width = thumbSize + 10;
             tile.Container.Height = thumbSize + tile.Label.Height + 10;
             tile.Label.Text = imgData.Filename;
-            tile.Label.Visible = DB.Prefs.ShowFilenames;
+            tile.Label.Visible = PreferencesManager.Prefs.ShowFilenames;
 
             TileTag tileTag = new TileTag
             {
@@ -390,7 +390,7 @@ namespace Calypso
         public static void RefreshTileLabels()
         {
             foreach (TileTag tTag in allTiles)
-                tTag._PooledTile.Label.Visible = DB.Prefs.ShowFilenames;
+                tTag._PooledTile.Label.Visible = PreferencesManager.Prefs.ShowFilenames;
         }
 
 

@@ -103,7 +103,7 @@ namespace Calypso
             DB.OnClose(CaptureCurrentSession());
         }
 
-        public void ApplyPreferences(Preferences prefs)
+        public void ApplyPreferences(AppPreferences prefs)
         {
             hideFilenamesToolStripMenuItem.Checked = !prefs.ShowFilenames;
             Gallery.RefreshTileLabels();
@@ -233,14 +233,14 @@ namespace Calypso
 
         private void hideFilenamesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            DB.Prefs.ShowFilenames = !DB.Prefs.ShowFilenames;
-            hideFilenamesToolStripMenuItem.Checked = !DB.Prefs.ShowFilenames;
+            PreferencesManager.Prefs.ShowFilenames = !PreferencesManager.Prefs.ShowFilenames;
+            hideFilenamesToolStripMenuItem.Checked = !PreferencesManager.Prefs.ShowFilenames;
             Gallery.RefreshTileLabels();
         }
 
-        private void MainWindow_Load(object sender, EventArgs e)
+        private void preferencesToolStripTextBox_Click(object sender, EventArgs e)
         {
-
+            new Preferences().ShowDialog();
         }
     }
 }
