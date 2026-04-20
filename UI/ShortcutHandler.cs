@@ -60,6 +60,7 @@ namespace Calypso
             if (keyData == Keys.I) { LayoutManager.TogglePanel(LayoutManager.ImageInfoSplitContainer, 2); return true; }
 
             // Gallery actions
+            if (keyData == Keys.Space) { if (MainWindow.FocusedPane == Pane.Gallery) Gallery.OpenTagEditorByCommand(); return true; }
             if (keyData == (Keys.Control | Keys.T)) { Gallery.OpenTagEditorByCommand(); return true; }
             if (keyData == Keys.Delete) { if (MainWindow.FocusedPane == Pane.Gallery) Gallery.DeleteSelected(); return true; }
             if (keyData == Keys.Enter) { if (MainWindow.FocusedPane == Pane.Gallery) Gallery.OpenSelected(); return true; }

@@ -41,6 +41,8 @@
             toolStripMenuItem7 = new ToolStripMenuItem();
             toolStripMenuItem1 = new ToolStripMenuItem();
             exitToolStripMenuItem = new ToolStripMenuItem();
+            editToolStripMenuItem = new ToolStripMenuItem();
+            toolStripMenuItem11 = new ToolStripMenuItem();
             viewToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItem2 = new ToolStripMenuItem();
             toolStripMenuItem5 = new ToolStripMenuItem();
@@ -53,7 +55,6 @@
             aboutToolStripMenuItem = new ToolStripMenuItem();
             tagToolStripMenuItem = new ToolStripMenuItem();
             addNewTagToolStripMenuItem = new ToolStripMenuItem();
-            editToolStripMenuItem = new ToolStripMenuItem();
             flowLayoutGallery = new FlowLayoutPanel();
             searchBox = new TextBox();
             statusStrip1 = new StatusStrip();
@@ -84,7 +85,7 @@
             removeTagToolStripMenuItem = new ToolStripMenuItem();
             addChildTagToolStripMenuItem = new ToolStripMenuItem();
             deleteToolStripMenuItem = new ToolStripMenuItem();
-            toolStripMenuItem11 = new ToolStripMenuItem();
+            showManual = new ToolStripMenuItem();
             menuStrip1.SuspendLayout();
             statusStrip1.SuspendLayout();
             searchPanel.SuspendLayout();
@@ -189,6 +190,20 @@
             exitToolStripMenuItem.Text = "E&xit";
             exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
             // 
+            // editToolStripMenuItem
+            // 
+            editToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItem11 });
+            editToolStripMenuItem.Name = "editToolStripMenuItem";
+            editToolStripMenuItem.Size = new Size(39, 20);
+            editToolStripMenuItem.Text = "Edit";
+            // 
+            // toolStripMenuItem11
+            // 
+            toolStripMenuItem11.Name = "toolStripMenuItem11";
+            toolStripMenuItem11.Size = new Size(135, 22);
+            toolStripMenuItem11.Text = "Preferences";
+            toolStripMenuItem11.Click += preferencesToolStripTextBox_Click;
+            // 
             // viewToolStripMenuItem
             // 
             viewToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItem2, hideFilenamesToolStripMenuItem });
@@ -246,7 +261,7 @@
             // 
             // testToolStripMenuItem
             // 
-            testToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { aboutToolStripMenuItem });
+            testToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { aboutToolStripMenuItem, showManual });
             testToolStripMenuItem.Name = "testToolStripMenuItem";
             testToolStripMenuItem.Size = new Size(44, 20);
             testToolStripMenuItem.Text = "&Help";
@@ -254,7 +269,7 @@
             // aboutToolStripMenuItem
             // 
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            aboutToolStripMenuItem.Size = new Size(152, 22);
+            aboutToolStripMenuItem.Size = new Size(180, 22);
             aboutToolStripMenuItem.Text = "&About Calypso";
             aboutToolStripMenuItem.Click += aboutToolStripMenuItem_Click;
             // 
@@ -272,13 +287,6 @@
             addNewTagToolStripMenuItem.Size = new Size(192, 22);
             addNewTagToolStripMenuItem.Text = "&Add New Tag";
             addNewTagToolStripMenuItem.Click += addNewTagToolStripMenuItem_Click;
-            // 
-            // editToolStripMenuItem
-            // 
-            editToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItem11 });
-            editToolStripMenuItem.Name = "editToolStripMenuItem";
-            editToolStripMenuItem.Size = new Size(39, 20);
-            editToolStripMenuItem.Text = "Edit";
             // 
             // flowLayoutGallery
             // 
@@ -588,12 +596,11 @@
             deleteToolStripMenuItem.Text = "Delete";
             deleteToolStripMenuItem.Click += deleteToolStripMenuItem_Click;
             // 
-            // toolStripMenuItem11
+            // showManual
             // 
-            toolStripMenuItem11.Name = "toolStripMenuItem11";
-            toolStripMenuItem11.Size = new Size(180, 22);
-            toolStripMenuItem11.Text = "Preferences";
-            toolStripMenuItem11.Click += preferencesToolStripTextBox_Click;
+            showManual.Name = "showManual";
+            showManual.Size = new Size(180, 22);
+            showManual.Text = "Show Manual";
             // 
             // MainWindow
             // 
@@ -696,5 +703,6 @@
         public ToolStripMenuItem hideFilenamesToolStripMenuItem;
         private ToolStripMenuItem editToolStripMenuItem;
         private ToolStripMenuItem toolStripMenuItem11;
+        private ToolStripMenuItem showManual;
     }
 }

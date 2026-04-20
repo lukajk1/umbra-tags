@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Umbra Tags — Manual</title>
+    <style>
+        body {
+            font-family: Segoe UI, sans-serif;
+            background: #1a1a1a;
+            color: #d0d0d0;
+            max-width: 860px;
+            margin: 40px auto;
+            padding: 0 24px 60px;
+            line-height: 1.6;
+        }
+        h1 { color: #ffffff; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        h2 { color: #c8a96e; margin-top: 2em; }
+        h3 { color: #a0a0a0; margin-top: 1.4em; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            text-align: left;
+            background: #2a2a2a;
+            color: #888;
+            font-weight: normal;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 6px 12px;
+        }
+        td {
+            padding: 7px 12px;
+            border-bottom: 1px solid #2a2a2a;
+            vertical-align: top;
+        }
+        tr:last-child td { border-bottom: none; }
+        kbd {
+            display: inline-block;
+            background: #2e2e2e;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 1px 7px;
+            font-family: Consolas, monospace;
+            font-size: 0.88em;
+            color: #e0e0e0;
+            white-space: nowrap;
+        }
+        p { color: #aaa; }
+        .note {
+            background: #222;
+            border-left: 3px solid #c8a96e;
+            padding: 10px 16px;
+            margin-top: 1em;
+            border-radius: 2px;
+            font-size: 0.92em;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Umbra Tags — Manual</h1>
+<p>A desktop image library manager. Organize images with tags, search by tag hierarchy, and manage multiple libraries.</p>
+
+<h2>Libraries</h2>
+<p>A library is a folder on disk that Umbra Tags manages. Images imported into a library are copied into that folder and tracked in the save file. You can have up to 9 libraries.</p>
+
+<table>
+    <tr><th>Action</th><th>How</th></tr>
+    <tr><td>Add a new library</td><td>File → Add New Library, or <kbd>Ctrl+N</kbd></td></tr>
+    <tr><td>Open an existing library folder</td><td>File → Open Existing Library</td></tr>
+    <tr><td>Switch libraries</td><td><kbd>Alt+1</kbd> – <kbd>Alt+9</kbd>, or the Libraries menu</td></tr>
+    <tr><td>Open library source folder in Explorer</td><td><kbd>Ctrl+Enter</kbd></td></tr>
+</table>
+
+<h2>Importing Images</h2>
+<p>Images can be added to the active library by dragging files onto the gallery, or via the file dialog.</p>
+
+<table>
+    <tr><th>Action</th><th>How</th></tr>
+    <tr><td>Import via file dialog</td><td><kbd>Ctrl+I</kbd></td></tr>
+    <tr><td>Import by drag and drop</td><td>Drag image files onto the gallery</td></tr>
+    <tr><td>Delete source file after drag-in</td><td>Preferences → Delete Source on Drag In</td></tr>
+</table>
+
+<div class="note">When importing, Umbra Tags computes a perceptual hash (dHash) for each image. If a visually similar image already exists in the library, a duplicate dialog appears with options to cancel, import anyway, replace the existing image, or delete the incoming file.</div>
+
+<h2>Searching</h2>
+<p>Type in the search box and press Enter. Searches match a single tag and include all child tags in the tag tree.</p>
+
+<table>
+    <tr><th>Term</th><th>Result</th></tr>
+    <tr><td><kbd>all</kbd></td><td>All images in the library</td></tr>
+    <tr><td><kbd>untagged</kbd></td><td>Images with no tags, sorted by date modified</td></tr>
+    <tr><td><kbd>randimg</kbd></td><td>One random image from the library</td></tr>
+    <tr><td>any tag name</td><td>Images tagged with that tag, including child tags</td></tr>
+</table>
+
+<h2>Tagging</h2>
+<p>Tags are organized in a tree. A parent tag search includes all descendants.</p>
+
+<table>
+    <tr><th>Action</th><th>How</th></tr>
+    <tr><td>Open tag editor for selection</td><td><kbd>Space</kbd> or <kbd>Ctrl+T</kbd>, or right-click → Edit Tags</td></tr>
+    <tr><td>Add a new tag to the tree</td><td>Tags → Add New Tag, or <kbd>Ctrl+T</kbd> from tag panel</td></tr>
+    <tr><td>Pin a tag</td><td>Right-click a tag in the tag tree</td></tr>
+</table>
+
+<h2>Gallery</h2>
+
+<h3>Selection</h3>
+<table>
+    <tr><th>Action</th><th>How</th></tr>
+    <tr><td>Select image</td><td>Left-click</td></tr>
+    <tr><td>Add to selection</td><td><kbd>Ctrl+Click</kbd></td></tr>
+    <tr><td>Range select</td><td><kbd>Shift+Click</kbd> (with one image already selected)</td></tr>
+    <tr><td>Select all</td><td><kbd>Ctrl+A</kbd></td></tr>
+    <tr><td>Navigate with keyboard</td><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td></tr>
+</table>
+
+<h3>Actions on selected images</h3>
+<table>
+    <tr><th>Action</th><th>How</th></tr>
+    <tr><td>Open in default viewer</td><td>Double-click, or <kbd>Enter</kbd></td></tr>
+    <tr><td>Edit tags</td><td><kbd>Space</kbd> or <kbd>Ctrl+T</kbd></td></tr>
+    <tr><td>Show in Explorer</td><td><kbd>Ctrl+E</kbd>, or right-click → Show in Folder</td></tr>
+    <tr><td>Delete from library</td><td><kbd>Delete</kbd>, or right-click → Delete</td></tr>
+    <tr><td>Drag out of library</td><td>Drag from gallery to another application or folder</td></tr>
+</table>
+
+<h3>Zoom</h3>
+<table>
+    <tr><th>Action</th><th>How</th></tr>
+    <tr><td>Zoom in / out</td><td><kbd>Ctrl+Scroll wheel</kbd></td></tr>
+</table>
+
+<h2>Layout &amp; Panels</h2>
+<table>
+    <tr><th>Action</th><th>How</th></tr>
+    <tr><td>Default layout</td><td><kbd>Ctrl+1</kbd></td></tr>
+    <tr><td>Large preview layout</td><td><kbd>Ctrl+2</kbd></td></tr>
+    <tr><td>Toggle tag tree panel</td><td><kbd>R</kbd></td></tr>
+    <tr><td>Toggle preview panel</td><td><kbd>N</kbd></td></tr>
+    <tr><td>Toggle image info panel</td><td><kbd>I</kbd></td></tr>
+    <tr><td>Toggle filenames under thumbnails</td><td>View → Hide Filenames, or Preferences</td></tr>
+</table>
+
+<h2>Preferences</h2>
+<table>
+    <tr><th>Setting</th><th>Description</th></tr>
+    <tr><td>Show Filenames</td><td>Show or hide the filename label under each thumbnail</td></tr>
+    <tr><td>Delete Source on Drag In</td><td>Automatically delete the original file after it is imported via drag and drop</td></tr>
+    <tr><td>Right-click behavior</td><td>Choose whether right-clicking opens the context menu or the tag editor directly</td></tr>
+</table>
+
+<h2>Global Shortcuts</h2>
+<table>
+    <tr><th>Shortcut</th><th>Action</th></tr>
+    <tr><td><kbd>Ctrl+Q</kbd></td><td>Quit</td></tr>
+    <tr><td><kbd>Ctrl+L</kbd></td><td>Toggle focus between search box and tag tree</td></tr>
+    <tr><td><kbd>Alt+1</kbd> – <kbd>Alt+9</kbd></td><td>Switch to library 1–9</td></tr>
+</table>
+
+</body>
+</html>
