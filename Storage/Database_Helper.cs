@@ -145,21 +145,25 @@ namespace Calypso
             foreach (string fp in filepaths)
             {
                 string ext = Path.GetExtension(fp).ToLower();
-                if (ext is not (".jpg" or ".jpeg" or ".jfif" or ".png" or ".bmp" or ".gif" or ".webp"))
+                if (!Util.IsSupportedExtension(ext))
                     continue;
 
                 if (!File.Exists(fp)) continue;
 
                 if (lib.filenameDict.ContainsKey(fp)) continue;
 
-                // Check for similar images before importing
-                ulong incomingHash;
-                using (var bmp = Util.LoadImage(fp))
+                // Check for similar images before importing (skip duplicate check for videos)
+                bool isVideo = Util.IsVideoExtension(ext);
+                ulong incomingHash = 0;
+                if (!isVideo)
+                {
+                    using var bmp = Util.LoadImage(fp);
                     incomingHash = DHash.Compute(bmp);
+                }
 
                 bool skipFile = false;
                 var dismissed = new HashSet<string>();
-                while (true)
+                while (!isVideo)
                 {
                     var similar = lib.filenameDict.Values
                         .FirstOrDefault(img => DHash.IsSimilar(incomingHash, img.DHash)

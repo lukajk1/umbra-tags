@@ -12,8 +12,80 @@ namespace Calypso
 {
     public delegate void ConfirmAction();
 
+    // ── Windows Shell COM interop for video thumbnails ────────────────────
+    internal static class ShellThumbnail
+    {
+        [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        private interface IShellItemImageFactory
+        {
+            [PreserveSig]
+            int GetImage([In] SIZE size, [In] SIIGBF flags, out IntPtr phbm);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct SIZE { public int cx, cy; }
+
+        [Flags]
+        private enum SIIGBF : int
+        {
+            ResizeToFit    = 0x00,
+            BiggerSizeOk   = 0x01,
+            MemoryOnly     = 0x02,
+            IconOnly       = 0x04,
+            ThumbnailOnly  = 0x08,
+            InCacheOnly    = 0x10,
+        }
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
+        private static extern void SHCreateItemFromParsingName(
+            string pszPath, IntPtr pbc, ref Guid riid, out IShellItemImageFactory ppv);
+
+        private static readonly Guid IID_IShellItemImageFactory =
+            new Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b");
+
+        /// <summary>
+        /// Extract a thumbnail from any file using the Windows Shell thumbnail cache.
+        /// Returns null if the Shell cannot produce a thumbnail.
+        /// </summary>
+        public static Bitmap? GetThumbnail(string path, int size = 256)
+        {
+            try
+            {
+                var iid = IID_IShellItemImageFactory;
+                SHCreateItemFromParsingName(path, IntPtr.Zero, ref iid, out var factory);
+
+                int hr = factory.GetImage(new SIZE { cx = size, cy = size },
+                    SIIGBF.ThumbnailOnly | SIIGBF.BiggerSizeOk, out IntPtr hbm);
+                if (hr != 0 || hbm == IntPtr.Zero) return null;
+
+                var bmp = Image.FromHbitmap(hbm);
+                DeleteObject(hbm);  // release the GDI handle
+                return bmp;
+            }
+            catch { return null; }
+        }
+
+        [DllImport("gdi32.dll")] private static extern bool DeleteObject(IntPtr hObject);
+    }
+
     internal class Util
     {
+        public static readonly string[] SupportedImageExtensions =
+            { ".jpg", ".jpeg", ".jfif", ".png", ".bmp", ".gif", ".webp" };
+
+        public static readonly string[] SupportedVideoExtensions =
+            { ".mp4", ".mov", ".webm", ".mkv", ".avi", ".wmv", ".m4v" };
+
+        public static bool IsVideoExtension(string ext) =>
+            Array.IndexOf(SupportedVideoExtensions, ext.ToLower()) >= 0;
+
+        public static bool IsSupportedExtension(string ext)
+        {
+            string lower = ext.ToLower();
+            return Array.IndexOf(SupportedImageExtensions, lower) >= 0
+                || Array.IndexOf(SupportedVideoExtensions, lower) >= 0;
+        }
+
         public static bool TextPrompt(string message, out string output, string prefillText = "")
         {
             using (var prompt = new TextPrompt(MainWindow.i, message))
@@ -57,18 +129,21 @@ namespace Calypso
         public static string[] GetAllImageFilepaths(string path)
         {
             return System.IO.Directory.GetFiles(path, "*.*")
-                                .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
-                                            f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
-                                            f.EndsWith(".jfif", StringComparison.OrdinalIgnoreCase) ||
-                                            f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
-                                            f.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) ||
-                                            f.EndsWith(".gif", StringComparison.OrdinalIgnoreCase) ||
-                                            f.EndsWith(".webp", StringComparison.OrdinalIgnoreCase))
+                                .Where(f => IsSupportedExtension(Path.GetExtension(f)))
                                 .ToArray();
         }
 
         public static Bitmap LoadImage(string path)
         {
+            if (IsVideoExtension(Path.GetExtension(path)))
+            {
+                // Use Windows Shell to extract a frame thumbnail
+                var thumb = ShellThumbnail.GetThumbnail(path, 512);
+                if (thumb != null) return thumb;
+                // Fallback: return a small placeholder
+                return MakeVideoPlaceholder(512);
+            }
+
             if (path.EndsWith(".webp", StringComparison.OrdinalIgnoreCase))
             {
                 byte[] bytes = File.ReadAllBytes(path);
@@ -79,6 +154,20 @@ namespace Calypso
             return new Bitmap(ms);
         }
 
+        /// <summary>Plain dark placeholder with a ▶ symbol, used when Shell returns nothing.</summary>
+        private static Bitmap MakeVideoPlaceholder(int size)
+        {
+            var bmp = new Bitmap(size, size);
+            using var g = Graphics.FromImage(bmp);
+            g.Clear(Color.FromArgb(30, 30, 30));
+            using var brush = new SolidBrush(Color.FromArgb(180, 180, 180));
+            float fs = size * 0.35f;
+            using var font = new Font("Segoe UI Symbol", fs, GraphicsUnit.Pixel);
+            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            g.DrawString("▶", font, brush, new RectangleF(0, 0, size, size), sf);
+            return bmp;
+        }
+
         public static string CreateThumbnail(Library lib, string originalImagePath)
         {
             if (!File.Exists(originalImagePath)) return "";
@@ -86,24 +175,30 @@ namespace Calypso
             string originalFilename = Path.GetFileName(originalImagePath);
             string thumbDir = Path.Combine(lib.Dirpath, "data");
 
-            // WebP and JFIF thumbnails are stored as PNG/JPG since GDI+ cannot write them directly
-            bool isWebP = originalFilename.EndsWith(".webp", StringComparison.OrdinalIgnoreCase);
-            bool isJfif = originalFilename.EndsWith(".jfif", StringComparison.OrdinalIgnoreCase);
-            string thumbFilename = isWebP
-                ? "thumb_" + Path.GetFileNameWithoutExtension(originalFilename) + ".png"
+            string nameNoExt = Path.GetFileNameWithoutExtension(originalFilename);
+            string ext = Path.GetExtension(originalFilename);
+
+            // Videos and WebP/JFIF thumbnails are always stored as PNG
+            bool isVideo = IsVideoExtension(ext);
+            bool isWebP  = ext.Equals(".webp", StringComparison.OrdinalIgnoreCase);
+            bool isJfif  = ext.Equals(".jfif", StringComparison.OrdinalIgnoreCase);
+
+            string thumbFilename = (isVideo || isWebP)
+                ? "thumb_" + nameNoExt + ".png"
                 : isJfif
-                    ? "thumb_" + Path.GetFileNameWithoutExtension(originalFilename) + ".jpg"
+                    ? "thumb_" + nameNoExt + ".jpg"
                     : "thumb_" + originalFilename;
+
             string thumbSavePath = Path.Combine(thumbDir, thumbFilename);
 
-            using Image thumb = CreateThumbnail(originalImagePath, GlobalValues.ThumbnailSize);
+            using Image thumb = CreateThumbnailBitmap(originalImagePath, GlobalValues.ThumbnailSize);
             ImageFormat format = GetImageFormatFromExtension(thumbSavePath);
             thumb.Save(thumbSavePath, format);
 
             return thumbSavePath;
         }
 
-        private static Image CreateThumbnail(string imagePath, int thumbnailHeight)
+        private static Image CreateThumbnailBitmap(string imagePath, int thumbnailHeight)
         {
             using Bitmap fullImage = LoadImage(imagePath);
             int newWidth = (int)(fullImage.Width * (thumbnailHeight / (float)fullImage.Height));

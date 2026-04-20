@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -17,6 +18,7 @@ namespace Calypso
         static Label labelDimensions;
         static Label labelFilename;
         static Label labelFilesize;
+        static Label? labelVideoHint;
 
         static ImageData? displayedImage;
 
@@ -30,8 +32,21 @@ namespace Calypso
             ImageInfoPanel.tableLayoutImageInfo = mainW.tableLayoutImageInfo;
 
             pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+            pictureBox.DoubleClick += PictureBox_DoubleClick;
 
             InfoTableSetup();
+        }
+
+        private static void PictureBox_DoubleClick(object? sender, EventArgs e)
+        {
+            if (displayedImage?.IsVideo == true && File.Exists(displayedImage.Filepath))
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName        = displayedImage.Filepath,
+                    UseShellExecute = true
+                });
+            }
         }
 
         private static void InfoTableSetup()
@@ -75,7 +90,11 @@ namespace Calypso
             // Populate metadata from file info without reading the image
             SetTableInfoFromData(imgData);
 
+            // Show/hide the "double-click to open" hint for videos
+            SetVideoHint(imgData.IsVideo);
+
             if (!File.Exists(imgData.Filepath)) return;
+            if (imgData.IsVideo) return;  // thumbnail is enough for videos
 
             // Load full-res async; update preview and dimensions when ready
             Task.Run(() =>
@@ -124,6 +143,7 @@ namespace Calypso
             _loadCts?.Cancel();
             displayedImage = null;
             SetPreviewImage(null, owned: false);
+            SetVideoHint(false);
             labelFilename.Text   = "--";
             labelDimensions.Text = "--";
             labelFilesize.Text   = "--";
@@ -137,6 +157,38 @@ namespace Calypso
             var img = displayedImage;
             displayedImage = null; // force re-display
             Display(img);
+        }
+
+        private static void SetVideoHint(bool visible)
+        {
+            if (pictureBox == null) return;
+
+            if (visible)
+            {
+                if (labelVideoHint == null)
+                {
+                    labelVideoHint = new Label
+                    {
+                        Text      = "Double-click to open in player",
+                        AutoSize  = false,
+                        TextAlign = ContentAlignment.MiddleCenter,
+                        ForeColor = Color.Gray,
+                        BackColor = Color.Transparent,
+                        Dock      = DockStyle.Bottom,
+                        Height    = 22,
+                        Cursor    = Cursors.Hand,
+                    };
+                    labelVideoHint.DoubleClick += PictureBox_DoubleClick;
+                    pictureBox.Parent?.Controls.Add(labelVideoHint);
+                    pictureBox.Parent?.Controls.SetChildIndex(labelVideoHint,
+                        pictureBox.Parent.Controls.GetChildIndex(pictureBox) + 1);
+                }
+                labelVideoHint.Visible = true;
+            }
+            else if (labelVideoHint != null)
+            {
+                labelVideoHint.Visible = false;
+            }
         }
 
         private static void SetPreviewImage(Bitmap? bmp, bool owned)

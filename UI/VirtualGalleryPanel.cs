@@ -328,6 +328,19 @@ namespace Calypso.UI
                 g.DrawRectangle(pen, tb.X, tb.Y, tb.Width - 1, tb.Height - 1);
             }
 
+            // video badge: small ▶ in bottom-right corner
+            if (_items[index].ImageData.IsVideo)
+            {
+                const int BadgeSize = 22;
+                var badge = new Rectangle(tb.Right - BadgeSize - 3, tb.Bottom - BadgeSize - 3, BadgeSize, BadgeSize);
+                using var bgBrush = new SolidBrush(Color.FromArgb(160, 0, 0, 0));
+                g.FillEllipse(bgBrush, badge);
+                using var fgBrush = new SolidBrush(Color.FromArgb(220, 255, 255, 255));
+                using var badgeFont = new Font("Segoe UI Symbol", BadgeSize * 0.45f, GraphicsUnit.Pixel);
+                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                g.DrawString("▶", badgeFont, fgBrush, badge, sf);
+            }
+
             // label
             if (ShowLabels)
             {

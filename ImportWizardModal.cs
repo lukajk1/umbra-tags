@@ -10,7 +10,8 @@ namespace Calypso
     internal class ImportWizardModal : Form
     {
         private static readonly string[] SupportedExtensions =
-            { ".jpg", ".jpeg", ".jfif", ".png", ".bmp", ".gif", ".webp" };
+            { ".jpg", ".jpeg", ".jfif", ".png", ".bmp", ".gif", ".webp",
+              ".mp4", ".mov", ".webm", ".mkv", ".avi", ".wmv", ".m4v" };
 
         private static string DownloadsPath =>
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");

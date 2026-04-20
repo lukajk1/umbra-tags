@@ -209,24 +209,7 @@ namespace Calypso
             string thumbPath = Path.Combine(lib.Dirpath, "data");
             if (!Directory.Exists(thumbPath)) Directory.CreateDirectory(thumbPath);
 
-            AddNewEntriesToFilenameDict(Util.GetAllImageFilepaths(lib.Dirpath));
-
-            var deadKeys = ActiveLibrary.filenameDict
-                .Where(kvp => !File.Exists(kvp.Value.Filepath))
-                .Select(kvp => kvp.Key).ToList();
-            foreach (string key in deadKeys)
-            {
-                ImageData dead = ActiveLibrary.filenameDict[key];
-                if (File.Exists(dead.ThumbnailPath)) File.Delete(dead.ThumbnailPath);
-                ActiveLibrary.filenameDict.Remove(key);
-            }
-
-            foreach (var img in ActiveLibrary.filenameDict.Values)
-                if (!File.Exists(img.ThumbnailPath))
-                    Util.CreateThumbnail(lib, img.Filepath);
-
-            SetAllAndUntaggedToDict();
-            BackfillDHashes();
+            SyncLibraryFiles(lib);
             Save();
 
             if (search) Searchbar.Search("all");
@@ -284,6 +267,40 @@ namespace Calypso
             }
             libraryPath = "";
             return false;
+        }
+
+        /// <summary>
+        /// Manually sync the active library against its directory:
+        /// picks up new files, prunes deleted ones, generates missing thumbnails, saves.
+        /// </summary>
+        public static void SyncLibrary()
+        {
+            if (ActiveLibrary == null) return;
+            SyncLibraryFiles(ActiveLibrary);
+            Save();
+            Searchbar.RepeatLastSearch();
+        }
+
+        private static void SyncLibraryFiles(Library lib)
+        {
+            AddNewEntriesToFilenameDict(Util.GetAllImageFilepaths(lib.Dirpath));
+
+            var deadKeys = lib.filenameDict
+                .Where(kvp => !File.Exists(kvp.Value.Filepath))
+                .Select(kvp => kvp.Key).ToList();
+            foreach (string key in deadKeys)
+            {
+                ImageData dead = lib.filenameDict[key];
+                if (File.Exists(dead.ThumbnailPath)) File.Delete(dead.ThumbnailPath);
+                lib.filenameDict.Remove(key);
+            }
+
+            foreach (var img in lib.filenameDict.Values)
+                if (!File.Exists(img.ThumbnailPath))
+                    Util.CreateThumbnail(lib, img.Filepath);
+
+            SetAllAndUntaggedToDict();
+            BackfillDHashes();
         }
 
         private static void AddNewEntriesToFilenameDict(string[] newImageFilepaths)

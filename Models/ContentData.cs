@@ -30,6 +30,8 @@ namespace Calypso
         public ulong DHash { get; set; }
         public bool IsArchived { get; set; } = false;
 
+        public bool IsVideo => Util.IsVideoExtension(Path.GetExtension(Filepath));
+
         public ImageData(string filepath, string thumbnailPath)
         {
             Filepath = filepath;

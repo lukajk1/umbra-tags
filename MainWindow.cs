@@ -201,6 +201,7 @@ namespace Calypso
         private void toolStripMenuItem3_Click(object sender, EventArgs e) => LayoutManager.SetLayout(LayoutManager.LargeWindow);
         private void toolStripMenuItem9_Click(object sender, EventArgs e) => Commands.AddFilesViaDialog();
         private void toolStripMenuItem1_Click_1(object sender, EventArgs e) => DB.OpenCurrentLibrarySourceFolder();
+        private void syncLibraryToolStripMenuItem_Click(object sender, EventArgs e) => DB.SyncLibrary();
         private void checkBoxRandomize_CheckedChanged(object sender, EventArgs e) => Searchbar.RepeatLastSearch();
         private void newGalleryToolStripMenuItem_Click(object sender, EventArgs e) => DB.AddNewLibrary();
         private void removeTagToolStripMenuItem_Click(object sender, EventArgs e) => TagTreePanel.i.RenameTag(sender);

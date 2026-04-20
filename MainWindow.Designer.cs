@@ -88,6 +88,7 @@
             addChildTagToolStripMenuItem = new ToolStripMenuItem();
             deleteToolStripMenuItem = new ToolStripMenuItem();
             exportTagsToCSV = new ToolStripMenuItem();
+            syncLibraryToolStripMenuItem = new ToolStripMenuItem();
             menuStrip1.SuspendLayout();
             statusStrip1.SuspendLayout();
             searchPanel.SuspendLayout();
@@ -123,7 +124,7 @@
             // 
             // fileToolStripMenuItem
             // 
-            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { addNewLibraryToolStripMenuItem, openExistingLibraryToolStripMenuItem, toolStripMenuItem1, exportTagsToCSV, exitToolStripMenuItem });
+            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { addNewLibraryToolStripMenuItem, openExistingLibraryToolStripMenuItem, toolStripMenuItem1, syncLibraryToolStripMenuItem, exportTagsToCSV, exitToolStripMenuItem });
             fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             fileToolStripMenuItem.Size = new Size(37, 20);
             fileToolStripMenuItem.Text = "&File";
@@ -184,8 +185,16 @@
             toolStripMenuItem1.Text = "Show Current Library &Folder";
             toolStripMenuItem1.Click += toolStripMenuItem1_Click_1;
             // 
+            // syncLibraryToolStripMenuItem
+            //
+            syncLibraryToolStripMenuItem.Name = "syncLibraryToolStripMenuItem";
+            syncLibraryToolStripMenuItem.ShortcutKeyDisplayString = "F5";
+            syncLibraryToolStripMenuItem.Size = new Size(288, 22);
+            syncLibraryToolStripMenuItem.Text = "&Refresh Library";
+            syncLibraryToolStripMenuItem.Click += syncLibraryToolStripMenuItem_Click;
+            //
             // exitToolStripMenuItem
-            // 
+            //
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
             exitToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl + Q";
             exitToolStripMenuItem.Size = new Size(288, 22);
@@ -725,5 +734,6 @@
         private ToolStripMenuItem showManual;
         private Button searchButton;
         private ToolStripMenuItem exportTagsToCSV;
+        private ToolStripMenuItem syncLibraryToolStripMenuItem;
     }
 }
