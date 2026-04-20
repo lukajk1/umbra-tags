@@ -32,7 +32,7 @@ namespace Calypso
                 return true;
             }
 
-            if ((keyData & (Keys.Control | Keys.Shift)) == (Keys.Control | Keys.Shift))
+            if ((keyData & (Keys.Alt)) == (Keys.Alt))
             {
                 for (int i = 1; i <= 9; i++)
                 {

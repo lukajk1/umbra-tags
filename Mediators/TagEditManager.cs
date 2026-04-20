@@ -30,14 +30,15 @@ namespace Calypso.UI
             {
                 last = selection.Count - 1;   
             }
-
-            if (selection.Count == 1)
+            // hack solution but whatever
+            int displayCount = Math.Max(1, selection.Count - 1);
+            if (displayCount == 1)
             {
                 Window.Text = "Tag Editor - " + selection[0]._ImageData.Filename;
             }
             else
             {
-                Window.Text = $"Tag Editor - {selection.Count} Items Selected";
+                Window.Text = $"Tag Editor - {displayCount} Items Selected";
             }
 
             Window.Populate(selection);

@@ -35,7 +35,7 @@ namespace Calypso
 
                 var openSub = new ToolStripMenuItem("Open", null, (s, e) => HandleLibraryAction("open", lib));
                 if (activeLib) openSub.Enabled = false;
-                if (index < 10) openSub.ShortcutKeyDisplayString = $"Ctrl + Shift + {index}";
+                if (index < 10) openSub.ShortcutKeyDisplayString = $"Alt + {index}";
 
                 var renameSub = new ToolStripMenuItem("Rename", null, (s, e) => HandleLibraryAction("rename", lib));
                 var removeSub = new ToolStripMenuItem("Remove", null, (s, e) => HandleLibraryAction("remove", lib));

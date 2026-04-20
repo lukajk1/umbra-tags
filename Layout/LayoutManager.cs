@@ -28,7 +28,7 @@ namespace Calypso
                 LeftPanelHSplitter_Ratio = 0.28f,
                 RightPanelHSplitter_Ratio = 0.35f,
                 Metadata_IsOpen = false,
-                LeftPanel_IsOpen = false,
+                LeftPanel_IsOpen = true,
                 RightPanel_IsOpen = true
             };
 

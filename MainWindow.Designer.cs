@@ -256,14 +256,14 @@
             // 
             tagToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { addNewTagToolStripMenuItem });
             tagToolStripMenuItem.Name = "tagToolStripMenuItem";
-            tagToolStripMenuItem.Size = new Size(37, 20);
+            tagToolStripMenuItem.Size = new Size(38, 20);
             tagToolStripMenuItem.Text = "&Tag";
             // 
             // addNewTagToolStripMenuItem
             // 
             addNewTagToolStripMenuItem.Name = "addNewTagToolStripMenuItem";
             addNewTagToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl + T";
-            addNewTagToolStripMenuItem.Size = new Size(190, 22);
+            addNewTagToolStripMenuItem.Size = new Size(192, 22);
             addNewTagToolStripMenuItem.Text = "&Add New Tag";
             addNewTagToolStripMenuItem.Click += addNewTagToolStripMenuItem_Click;
             // 
@@ -570,26 +570,26 @@
             // 
             contextMenuTagTree.Items.AddRange(new ToolStripItem[] { removeTagToolStripMenuItem, addChildTagToolStripMenuItem, deleteToolStripMenuItem });
             contextMenuTagTree.Name = "contextMenuTagTree";
-            contextMenuTagTree.Size = new Size(149, 70);
+            contextMenuTagTree.Size = new Size(150, 70);
             // 
             // removeTagToolStripMenuItem
             // 
             removeTagToolStripMenuItem.Name = "removeTagToolStripMenuItem";
-            removeTagToolStripMenuItem.Size = new Size(148, 22);
+            removeTagToolStripMenuItem.Size = new Size(149, 22);
             removeTagToolStripMenuItem.Text = "Rename";
             removeTagToolStripMenuItem.Click += removeTagToolStripMenuItem_Click;
             // 
             // addChildTagToolStripMenuItem
             // 
             addChildTagToolStripMenuItem.Name = "addChildTagToolStripMenuItem";
-            addChildTagToolStripMenuItem.Size = new Size(148, 22);
+            addChildTagToolStripMenuItem.Size = new Size(149, 22);
             addChildTagToolStripMenuItem.Text = "Add Child Tag";
             addChildTagToolStripMenuItem.Click += addChildTagToolStripMenuItem_Click;
             // 
             // deleteToolStripMenuItem
             // 
             deleteToolStripMenuItem.Name = "deleteToolStripMenuItem";
-            deleteToolStripMenuItem.Size = new Size(148, 22);
+            deleteToolStripMenuItem.Size = new Size(149, 22);
             deleteToolStripMenuItem.Text = "Delete";
             deleteToolStripMenuItem.Click += deleteToolStripMenuItem_Click;
             // 
