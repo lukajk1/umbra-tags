@@ -71,10 +71,12 @@ namespace Calypso
 
             var editTagsItem = new ToolStripMenuItem("Edit Tags");
             editTagsItem.Click += (s, e) => OpenTagEditorByCommand();
+            var showInFolderItem = new ToolStripMenuItem("Show in Folder");
+            showInFolderItem.Click += (s, e) => OpenSelectedInExplorer();
             var deleteItem = new ToolStripMenuItem("Delete");
             deleteItem.Click += (s, e) => DeleteSelected();
             imageContextMenuStrip = new ContextMenuStrip();
-            imageContextMenuStrip.Items.AddRange(new ToolStripItem[] { editTagsItem, deleteItem });
+            imageContextMenuStrip.Items.AddRange(new ToolStripItem[] { editTagsItem, showInFolderItem, new ToolStripSeparator(), deleteItem });
 
             flowLayoutGallery.AllowDrop = true;
             flowLayoutGallery.DragEnter += flowLayoutGallery_DragEnter;
