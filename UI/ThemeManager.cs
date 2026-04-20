@@ -104,9 +104,9 @@ namespace Calypso.UI
                     break;
 
                 case StatusStrip ss:
-                    ss.BackColor = Theme.Surface;
-                    ss.ForeColor = Theme.Foreground;
-                    ss.Renderer  = new ThemedMenuRenderer();
+                    ss.BackColor   = Theme.Surface;
+                    ss.ForeColor   = Theme.Foreground;
+                    ss.Renderer    = new ThemedMenuRenderer();
                     foreach (ToolStripItem item in ss.Items)
                     {
                         item.BackColor = Theme.Surface;
@@ -250,6 +250,11 @@ namespace Calypso.UI
         {
             using var brush = new SolidBrush(Theme.Surface);
             e.Graphics.FillRectangle(brush, e.AffectedBounds);
+        }
+
+        protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+        {
+            // suppress the default highlight line drawn at the top of StatusStrip
         }
 
         protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
