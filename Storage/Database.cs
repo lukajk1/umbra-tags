@@ -14,9 +14,10 @@ namespace Calypso
         public List<Library> Libraries { get; set; }
         public Library ActiveLibrary { get; set; }
         public Session LastSession { get; set; }
+        public Preferences Preferences { get; set; } = new Preferences();
 
-        public Appdata(List<Library> libraries, Library activeLibrary, Session lastSession) 
-        { 
+        public Appdata(List<Library> libraries, Library activeLibrary, Session lastSession)
+        {
             Libraries = libraries;
             ActiveLibrary = activeLibrary;
             LastSession = lastSession;
@@ -26,6 +27,7 @@ namespace Calypso
     internal static partial class DB
     {
         public static Appdata appdata;
+        public static Preferences Prefs => appdata.Preferences;
         private static string appdataFilePath = string.Empty;
 
         // events
@@ -41,7 +43,9 @@ namespace Calypso
             // exclamation is null-forgiving operator
             if (Load() || (appdata = NewAppdata()!) != null)
             {
+                appdata.Preferences ??= new Preferences();
                 mainW.LoadSession(appdata.LastSession);
+                mainW.ApplyPreferences(appdata.Preferences);
                 LoadLibrary(appdata.LastSession.LastActiveLibrary, search: false);
                 Searchbar.Search(appdata.LastSession.LastSearch ?? "all");
                 return true;
@@ -172,6 +176,7 @@ namespace Calypso
                 TagTreePanel.i.Populate(appdata.ActiveLibrary.tagTree, appdata.ActiveLibrary.tagDict);
             }
 
+            MainWindow.i.UpdateTitle(lib.Name);
             OnNewLibraryLoaded?.Invoke(lib);
         }
 

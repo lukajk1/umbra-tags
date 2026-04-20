@@ -29,6 +29,12 @@ namespace Calypso
             List<ImageData> added = DB.AddFilesToLibrary(files);
             if (added.Count == 0) return;
 
+            if (DB.Prefs.DeleteSourceOnDragIn)
+            {
+                foreach (string f in files)
+                    if (File.Exists(f)) File.Delete(f);
+            }
+
             // Insert shells at the top of the gallery, then load images async
             flowLayoutGallery.SuspendLayout();
             var newTiles = new List<(TileTag tileTag, string thumbnailPath)>();
@@ -171,7 +177,10 @@ namespace Calypso
 
             if (e.Button == MouseButtons.Right)
             {
-                imageContextMenuStrip?.Show(pb, e.Location);
+                if (DB.Prefs.RightClickBehavior == RightClickBehavior.TagEditor)
+                    OpenTagEditorByCommand();
+                else
+                    imageContextMenuStrip?.Show(pb, e.Location);
             }
         }
 

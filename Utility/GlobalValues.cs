@@ -11,6 +11,5 @@ namespace Calypso
         public static int DefaultThumbnailSize = 150;
         public static int ThumbnailSize = 250;
         public static string Version = "1.1.0";
-        public static bool ShowFilenames = true;
     }
 }

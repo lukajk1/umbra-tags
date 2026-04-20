@@ -26,7 +26,6 @@ namespace Calypso
             this.MouseWheel += MainWindow_MouseWheel;
             this.Text = $"Calypso {GlobalValues.Version}";
 
-
             Activate();
             Focus();
 
@@ -45,6 +44,11 @@ namespace Calypso
             new TagTreePanel(this);
             LibraryUIManager.Init(this);
             initialized = true;
+        }
+
+        public void UpdateTitle(string libraryName)
+        {
+            this.Text = $"Calypso {GlobalValues.Version} - {libraryName}";
         }
         private void CreateSingleton()
         {
@@ -88,13 +92,17 @@ namespace Calypso
             this.WindowState = session.WindowState;
             DB.appdata.ActiveLibrary = session.LastActiveLibrary;
             Gallery.Zoom = session.ZoomModifier;
-            GlobalValues.ShowFilenames = session.ShowFilenames;
-            hideFilenamesToolStripMenuItem.Checked = !session.ShowFilenames;
         }
 
         private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)
         {
             DB.OnClose(CaptureCurrentSession());
+        }
+
+        public void ApplyPreferences(Preferences prefs)
+        {
+            hideFilenamesToolStripMenuItem.Checked = !prefs.ShowFilenames;
+            Gallery.RefreshTileLabels();
         }
 
         public Session CaptureCurrentSession()
@@ -106,7 +114,6 @@ namespace Calypso
                 windowState: this.WindowState,
                 lastActiveLibrary: DB.appdata.ActiveLibrary,
                 zoomModifier: Gallery.Zoom,
-                showFilenames: GlobalValues.ShowFilenames,
                 lastSearch: searchBox.Text
             );
         }
@@ -121,7 +128,6 @@ namespace Calypso
                 windowState: this.WindowState,
                 lastActiveLibrary: lib,
                 zoomModifier: Gallery.Zoom,
-                showFilenames: GlobalValues.ShowFilenames,
                 lastSearch: searchBox.Text
             );
         }
@@ -223,8 +229,8 @@ namespace Calypso
 
         private void hideFilenamesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            GlobalValues.ShowFilenames = !GlobalValues.ShowFilenames;
-            hideFilenamesToolStripMenuItem.Checked = !GlobalValues.ShowFilenames;
+            DB.Prefs.ShowFilenames = !DB.Prefs.ShowFilenames;
+            hideFilenamesToolStripMenuItem.Checked = !DB.Prefs.ShowFilenames;
             Gallery.RefreshTileLabels();
         }
     }
