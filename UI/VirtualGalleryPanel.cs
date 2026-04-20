@@ -15,7 +15,7 @@ namespace Calypso.UI
     public sealed class VirtualGalleryPanel : ScrollableControl
     {
         // ── layout constants ──────────────────────────────────────────────
-        private const int TilePadding = 16;   // gap between tiles (and outer margin)
+        private const int TilePadding = 28;   // gap between tiles (and outer margin)
         private const int LabelH     = 20;
         private const int ScrollStep = 60;
 
@@ -62,6 +62,12 @@ namespace Calypso.UI
         private int _dragStartIndex = -1;
         private const int DragThreshold = 17;
         public static bool IsDraggingOut { get; private set; }
+
+        // ── box select ────────────────────────────────────────────────────
+        private Point _boxAnchor   = Point.Empty;   // screen-space anchor
+        private Point _boxCurrent  = Point.Empty;   // screen-space current
+        private bool  _isBoxSelecting = false;
+        private HashSet<int> _preBoxSelection = new();
 
         // ── colors ────────────────────────────────────────────────────────
         private static Color SelectionColor   => Theme.Accent;
@@ -279,6 +285,18 @@ namespace Calypso.UI
                     DrawTile(g, index, tb);
                 }
             }
+
+            if (_isBoxSelecting)
+            {
+                var r = GetBoxRect();
+                if (r.Width > 2 && r.Height > 2)
+                {
+                    using var fillBrush = new SolidBrush(Color.FromArgb(50, Theme.Accent));
+                    g.FillRectangle(fillBrush, r);
+                    using var borderPen = new Pen(Theme.Accent, 1);
+                    g.DrawRectangle(borderPen, r.X, r.Y, r.Width - 1, r.Height - 1);
+                }
+            }
         }
 
         private static Rectangle LetterboxRect(Rectangle cell, int imgW, int imgH)
@@ -402,7 +420,19 @@ namespace Calypso.UI
             int index = HitTest(e.Location);
             if (index < 0)
             {
-                ClearSelection();
+                if (e.Button == MouseButtons.Left)
+                {
+                    bool additive = (ModifierKeys & Keys.Control) == Keys.Control;
+                    _preBoxSelection = additive ? new HashSet<int>(_selectedIndices) : new HashSet<int>();
+                    if (!additive) { _selectedIndices.Clear(); Invalidate(); SelectionChanged?.Invoke(this, EventArgs.Empty); }
+                    _boxAnchor    = e.Location;
+                    _boxCurrent   = e.Location;
+                    _isBoxSelecting = true;
+                }
+                else
+                {
+                    ClearSelection();
+                }
                 return;
             }
 
@@ -448,6 +478,15 @@ namespace Calypso.UI
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
+
+            if (_isBoxSelecting && e.Button == MouseButtons.Left)
+            {
+                _boxCurrent = e.Location;
+                UpdateBoxSelection();
+                Invalidate();
+                return;
+            }
+
             if (e.Button != MouseButtons.Left || _dragStartPt == Point.Empty || _dragStartIndex < 0) return;
 
             if (Math.Abs(e.X - _dragStartPt.X) <= DragThreshold &&
@@ -474,7 +513,18 @@ namespace Calypso.UI
             SelectionChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        protected override void OnMouseUp(MouseEventArgs e) => base.OnMouseUp(e);
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (_isBoxSelecting)
+            {
+                _isBoxSelecting = false;
+                _boxAnchor  = Point.Empty;
+                _boxCurrent = Point.Empty;
+                Invalidate();
+                SelectionChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
 
         protected override void OnDoubleClick(EventArgs e)
         {
@@ -541,6 +591,41 @@ namespace Calypso.UI
             else if (tb.Bottom > ClientSize.Height)
                 SetScrollY(_scrollY + (tb.Bottom - ClientSize.Height) + TilePadding);
             Invalidate();
+        }
+
+        // ── box select helpers ────────────────────────────────────────────
+
+        private Rectangle GetBoxRect()
+        {
+            int x = Math.Min(_boxAnchor.X, _boxCurrent.X);
+            int y = Math.Min(_boxAnchor.Y, _boxCurrent.Y);
+            int w = Math.Abs(_boxCurrent.X - _boxAnchor.X);
+            int h = Math.Abs(_boxCurrent.Y - _boxAnchor.Y);
+            return new Rectangle(x, y, w, h);
+        }
+
+        private void UpdateBoxSelection()
+        {
+            var screenRect = GetBoxRect();
+            // convert to scroll-space for tile intersection
+            var scrollRect = new Rectangle(screenRect.X, screenRect.Y + _scrollY, screenRect.Width, screenRect.Height);
+
+            _selectedIndices.Clear();
+            foreach (var i in _preBoxSelection) _selectedIndices.Add(i);
+
+            for (int i = 0; i < _items.Count; i++)
+            {
+                int col = i % _cols;
+                int row = i / _cols;
+                int tx = TilePadding + col * _cellW;
+                int ty = TilePadding + row * _cellH;
+                var tileBounds = new Rectangle(tx, ty, _tileSize, _tileSize + (ShowLabels ? LabelH : 0));
+
+                if (tileBounds.IntersectsWith(scrollRect))
+                    _selectedIndices.Add(i);
+            }
+
+            SelectionChanged?.Invoke(this, EventArgs.Empty);
         }
 
         // ══════════════════════════════════════════════════════════════════
