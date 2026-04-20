@@ -16,6 +16,8 @@ namespace Calypso
         public static MainWindow i;
         public static Pane FocusedPane;
         public static bool initialized;
+
+        const string ProgramName = "Umbra Tags";
         public MainWindow()
         {
             CreateSingleton();
@@ -24,7 +26,7 @@ namespace Calypso
             this.KeyPreview = true;
             this.FormClosed += MainWindow_FormClosed;
             this.MouseWheel += MainWindow_MouseWheel;
-            this.Text = $"Calypso {GlobalValues.Version} - ...";
+            this.Text = $"{ProgramName} {GlobalValues.Version} - ...";
 
             Activate();
             Focus();
@@ -48,7 +50,7 @@ namespace Calypso
 
         public void UpdateTitle(string libraryName)
         {
-            this.Text = $"Calypso {GlobalValues.Version} - {libraryName}";
+            this.Text = $"{ProgramName} {GlobalValues.Version} - {libraryName}";
         }
         private void CreateSingleton()
         {
@@ -234,6 +236,11 @@ namespace Calypso
             DB.Prefs.ShowFilenames = !DB.Prefs.ShowFilenames;
             hideFilenamesToolStripMenuItem.Checked = !DB.Prefs.ShowFilenames;
             Gallery.RefreshTileLabels();
+        }
+
+        private void MainWindow_Load(object sender, EventArgs e)
+        {
+
         }
     }
 }

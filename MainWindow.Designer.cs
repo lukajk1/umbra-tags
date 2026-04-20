@@ -556,26 +556,26 @@
             // 
             contextMenuTagTree.Items.AddRange(new ToolStripItem[] { removeTagToolStripMenuItem, addChildTagToolStripMenuItem, deleteToolStripMenuItem });
             contextMenuTagTree.Name = "contextMenuTagTree";
-            contextMenuTagTree.Size = new Size(181, 92);
+            contextMenuTagTree.Size = new Size(150, 70);
             // 
             // removeTagToolStripMenuItem
             // 
             removeTagToolStripMenuItem.Name = "removeTagToolStripMenuItem";
-            removeTagToolStripMenuItem.Size = new Size(180, 22);
+            removeTagToolStripMenuItem.Size = new Size(149, 22);
             removeTagToolStripMenuItem.Text = "Rename";
             removeTagToolStripMenuItem.Click += removeTagToolStripMenuItem_Click;
             // 
             // addChildTagToolStripMenuItem
             // 
             addChildTagToolStripMenuItem.Name = "addChildTagToolStripMenuItem";
-            addChildTagToolStripMenuItem.Size = new Size(180, 22);
+            addChildTagToolStripMenuItem.Size = new Size(149, 22);
             addChildTagToolStripMenuItem.Text = "Add Child Tag";
             addChildTagToolStripMenuItem.Click += addChildTagToolStripMenuItem_Click;
             // 
             // deleteToolStripMenuItem
             // 
             deleteToolStripMenuItem.Name = "deleteToolStripMenuItem";
-            deleteToolStripMenuItem.Size = new Size(180, 22);
+            deleteToolStripMenuItem.Size = new Size(149, 22);
             deleteToolStripMenuItem.Text = "Delete";
             deleteToolStripMenuItem.Click += deleteToolStripMenuItem_Click;
             // 
@@ -591,7 +591,7 @@
             MainMenuStrip = menuStrip1;
             MinimumSize = new Size(450, 450);
             Name = "MainWindow";
-            Text = "Calypso";
+            Text = "Tag Manager";
             menuStrip1.ResumeLayout(false);
             menuStrip1.PerformLayout();
             statusStrip1.ResumeLayout(false);

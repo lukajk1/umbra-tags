@@ -21,9 +21,17 @@ namespace Calypso
 
             string stripped = new string(searchTextRaw.Where(c => !char.IsWhiteSpace(c)).ToArray());
 
-            if (stripped == "randtag" || stripped == "rtag" || stripped == "randomtag")
+            if (stripped == "randimg")
             {
-                // implement later..
+                var all = appdata.ActiveLibrary.filenameDict.Values.ToList();
+                if (all.Count > 0)
+                {
+                    var img = all[new Random().Next(all.Count)];
+                    results.Add(img);
+                    Gallery.Populate(results);
+                    ImageInfoPanel.Display(img);
+                    return;
+                }
             }
             else
             {

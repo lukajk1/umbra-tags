@@ -54,6 +54,10 @@ namespace Calypso
             separator.NodeFont = new Font("Consolas", 8, FontStyle.Regular);
             tagTree.Nodes.Insert(0, separator);
 
+            TreeNode nodeRandom = new TreeNode("Random Image");
+            nodeRandom.Tag = "randimg";
+            tagTree.Nodes.Insert(0, nodeRandom);
+
             TreeNode nodeNone = tagTree.Nodes.Insert(0, $"Untagged ({tagDict["untagged"].Count})");
             nodeNone.Tag = "untagged";
 
