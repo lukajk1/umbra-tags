@@ -36,7 +36,7 @@
             // checkboxDeleteSourceOnDragIn
             // 
             checkboxDeleteSourceOnDragIn.AutoSize = true;
-            checkboxDeleteSourceOnDragIn.Location = new Point(125, 97);
+            checkboxDeleteSourceOnDragIn.Location = new Point(21, 71);
             checkboxDeleteSourceOnDragIn.Name = "checkboxDeleteSourceOnDragIn";
             checkboxDeleteSourceOnDragIn.Size = new Size(236, 19);
             checkboxDeleteSourceOnDragIn.TabIndex = 0;
@@ -46,7 +46,7 @@
             // checkboxShowFilenames
             // 
             checkboxShowFilenames.AutoSize = true;
-            checkboxShowFilenames.Location = new Point(125, 132);
+            checkboxShowFilenames.Location = new Point(21, 96);
             checkboxShowFilenames.Name = "checkboxShowFilenames";
             checkboxShowFilenames.Size = new Size(163, 19);
             checkboxShowFilenames.TabIndex = 1;
@@ -55,7 +55,8 @@
             // 
             // button2
             // 
-            button2.Location = new Point(699, 406);
+            button2.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            button2.Location = new Point(432, 258);
             button2.Name = "button2";
             button2.Size = new Size(75, 23);
             button2.TabIndex = 3;
@@ -67,7 +68,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(800, 450);
+            ClientSize = new Size(519, 293);
             Controls.Add(button2);
             Controls.Add(checkboxShowFilenames);
             Controls.Add(checkboxDeleteSourceOnDragIn);

@@ -196,12 +196,17 @@ namespace Calypso
                 using (var bmp = Util.LoadImage(fp))
                     incomingHash = DHash.Compute(bmp);
 
-var similar = lib.filenameDict.Values
+                var similar = lib.filenameDict.Values
                     .FirstOrDefault(img => DHash.IsSimilar(incomingHash, img.DHash));
                 if (similar != null)
                 {
-                    Util.ShowErrorDialog($"This file is similar to \"{similar.Filename}\" and was not imported.");
-                    continue;
+                    using var modal = new PotentialDuplicateModal(fp, similar.Filepath);
+                    modal.ShowDialog();
+                    if (modal.Action == DuplicateAction.Cancel) continue;
+                    if (modal.Action == DuplicateAction.Replace)
+                    {
+                        DeleteImageData(new List<ImageData> { similar });
+                    }
                 }
 
                 string filename = Path.GetFileName(fp);
