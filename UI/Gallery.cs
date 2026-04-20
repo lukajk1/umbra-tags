@@ -44,7 +44,7 @@ namespace Calypso
             }
         }
         private const int ZoomPixelInterval = 50;
-        private const int MinZoomSteps = -4;
+        private const int MinZoomSteps = -2;
         private const int MaxZoomSteps = 8;
         private static int _zoomSteps = 0;
         public static int Zoom
@@ -224,19 +224,62 @@ namespace Calypso
 
         private static void SetZoom(int thumbSize)
         {
+            thumbSize = Math.Max(thumbSize, 1);
+            int scrollY = Math.Max(0, -flowLayoutGallery.AutoScrollPosition.Y);
+            int viewTop = scrollY;
+            int viewBottom = scrollY + flowLayoutGallery.ClientSize.Height;
+
+            var deferred = new List<TileTag>();
+
             flowLayoutGallery.SuspendLayout();
             foreach (TileTag tile in allTiles)
             {
-                tile._PictureBox.Size = new Size(thumbSize, thumbSize);
+                int tileTop = tile._Container.Top;
+                int tileBottom = tileTop + tile._Container.Height;
 
-                Label? label = tile._Container.Controls.OfType<Label>().FirstOrDefault();
-                int labelHeight = label?.Height ?? 20;
+                if (tileBottom < viewTop || tileTop > viewBottom)
+                {
+                    deferred.Add(tile);
+                    continue;
+                }
 
-                tile._Container.Width = thumbSize + 10;
-                tile._Container.Height = thumbSize + labelHeight + 10;
+                ResizeTile(tile, thumbSize);
             }
             flowLayoutGallery.ResumeLayout(true);
             CountPictureBoxesPerRow();
+
+            if (deferred.Count == 0) return;
+
+            // Preserve scroll position after layout shifts off-screen tiles
+            int savedScrollY = -flowLayoutGallery.AutoScrollPosition.Y;
+
+            Task.Run(async () =>
+            {
+                const int batchSize = 30;
+                for (int i = 0; i < deferred.Count; i += batchSize)
+                {
+                    var batch = deferred.Skip(i).Take(batchSize).ToList();
+                    await Task.Delay(16);
+                    flowLayoutGallery.BeginInvoke(() =>
+                    {
+                        flowLayoutGallery.SuspendLayout();
+                        foreach (var tile in batch)
+                            ResizeTile(tile, thumbSize);
+                        flowLayoutGallery.ResumeLayout(true);
+                    });
+                }
+            });
+        }
+
+        private static void ResizeTile(TileTag tile, int thumbSize)
+        {
+            tile._PictureBox.Size = new Size(thumbSize, thumbSize);
+
+            Label? label = tile._Container.Controls.OfType<Label>().FirstOrDefault();
+            int labelHeight = label?.Height ?? 20;
+
+            tile._Container.Width = thumbSize + 10;
+            tile._Container.Height = thumbSize + labelHeight + 10;
         }
 
 
@@ -283,7 +326,7 @@ namespace Calypso
             if (!File.Exists(imgData.ThumbnailPath)) return null;
 
             PooledTile tile = GetPooledTile();
-            int thumbSize = GlobalValues.DefaultThumbnailSize + _zoomSteps * ZoomPixelInterval;
+            int thumbSize = Math.Max(1, GlobalValues.DefaultThumbnailSize + _zoomSteps * ZoomPixelInterval);
             tile.PictureBox.Size = new Size(thumbSize, thumbSize);
             tile.Container.Width = thumbSize + 10;
             tile.Container.Height = thumbSize + tile.Label.Height + 10;
