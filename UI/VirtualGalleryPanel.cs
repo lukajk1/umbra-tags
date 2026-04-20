@@ -63,8 +63,7 @@ namespace Calypso.UI
         private const int DragThreshold = 17;
 
         // ── colors ────────────────────────────────────────────────────────
-        private static readonly Color PlaceholderColor  = Color.FromArgb(60, 60, 60);
-        private static readonly Color SelectionColor    = Color.FromArgb(0, 120, 215);
+private static readonly Color SelectionColor    = Color.FromArgb(0, 120, 215);
         private static readonly Color SelectionOverlay  = Color.FromArgb(40, 0, 120, 215);
         private static readonly Color LabelForeground   = Color.FromArgb(220, 220, 220);
 
@@ -276,20 +275,24 @@ namespace Calypso.UI
             }
         }
 
+        private static Rectangle LetterboxRect(Rectangle cell, int imgW, int imgH)
+        {
+            if (imgW <= 0 || imgH <= 0) return cell;
+            float scale = Math.Min((float)cell.Width / imgW, (float)cell.Height / imgH);
+            int w = (int)(imgW * scale);
+            int h = (int)(imgH * scale);
+            return new Rectangle(cell.X + (cell.Width - w) / 2, cell.Y + (cell.Height - h) / 2, w, h);
+        }
+
         private void DrawTile(Graphics g, int index, Rectangle tb)
         {
             bool selected = _selectedIndices.Contains(index);
             var bmp = _bitmaps[index];
 
-            // background / placeholder
             if (bmp != null)
             {
-                g.DrawImage(bmp, tb);
-            }
-            else
-            {
-                using var brush = new SolidBrush(PlaceholderColor);
-                g.FillRectangle(brush, tb);
+                var dest = LetterboxRect(tb, bmp.Width, bmp.Height);
+                g.DrawImage(bmp, dest);
             }
 
             // selection overlay + border
