@@ -15,7 +15,7 @@ namespace Calypso.UI
     public sealed class VirtualGalleryPanel : ScrollableControl
     {
         // ── layout constants ──────────────────────────────────────────────
-        private const int TilePadding = 8;   // gap between tiles (and outer margin)
+        private const int TilePadding = 16;   // gap between tiles (and outer margin)
         private const int LabelH     = 20;
         private const int ScrollStep = 60;
 
@@ -201,8 +201,7 @@ private static readonly Color SelectionColor    = Color.FromArgb(0, 120, 215);
 
         public void ScrollToTop()
         {
-            _scrollY = 0;
-            UpdateScrollbar();
+            SetScrollY(0);
             Invalidate();
         }
 
@@ -327,15 +326,30 @@ private static readonly Color SelectionColor    = Color.FromArgb(0, 120, 215);
 
         private void UpdateScrollbar()
         {
-            if (_totalContentH <= ClientSize.Height)
+            int maxScroll = Math.Max(0, _totalContentH - ClientSize.Height);
+            if (maxScroll == 0)
             {
-                VerticalScroll.Visible = false;
                 AutoScrollMinSize = Size.Empty;
+                _scrollY = 0;
                 return;
             }
             AutoScrollMinSize = new Size(0, _totalContentH);
             VerticalScroll.SmallChange = ScrollStep;
-            VerticalScroll.LargeChange = ClientSize.Height;
+            VerticalScroll.LargeChange = Math.Max(1, ClientSize.Height);
+            // clamp and sync after layout changes
+            _scrollY = Math.Min(_scrollY, maxScroll);
+            SetScrollY(_scrollY);
+        }
+
+        private void SetScrollY(int value)
+        {
+            int maxScroll = Math.Max(0, _totalContentH - ClientSize.Height);
+            _scrollY = Math.Max(0, Math.Min(value, maxScroll));
+            if (VerticalScroll.Visible)
+            {
+                int clamped = Math.Min(_scrollY, VerticalScroll.Maximum - VerticalScroll.LargeChange + 1);
+                if (clamped >= 0) VerticalScroll.Value = clamped;
+            }
         }
 
         private const int WM_VSCROLL = 0x0115;
@@ -353,16 +367,12 @@ private static readonly Color SelectionColor    = Color.FromArgb(0, 120, 215);
         {
             if ((ModifierKeys & Keys.Control) == Keys.Control)
             {
-                // pass to zoom handler via event bubble — handled by parent
                 base.OnMouseWheel(e);
                 return;
             }
 
             int delta = -(e.Delta / 120) * ScrollStep * 3;
-            int newY = Math.Max(0, Math.Min(_scrollY + delta, Math.Max(0, _totalContentH - ClientSize.Height)));
-            if (newY == _scrollY) return;
-            _scrollY = newY;
-            VerticalScroll.Value = _scrollY;
+            SetScrollY(_scrollY + delta);
             Invalidate();
         }
 
@@ -521,10 +531,10 @@ private static readonly Color SelectionColor    = Color.FromArgb(0, 120, 215);
         {
             var tb = TileBounds(index);
             if (tb.Top < 0)
-                _scrollY = Math.Max(0, _scrollY + tb.Top - TilePadding);
+                SetScrollY(_scrollY + tb.Top - TilePadding);
             else if (tb.Bottom > ClientSize.Height)
-                _scrollY = Math.Min(_totalContentH - ClientSize.Height, _scrollY + (tb.Bottom - ClientSize.Height) + TilePadding);
-            UpdateScrollbar();
+                SetScrollY(_scrollY + (tb.Bottom - ClientSize.Height) + TilePadding);
+            Invalidate();
         }
 
         // ══════════════════════════════════════════════════════════════════
