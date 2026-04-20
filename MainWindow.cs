@@ -59,7 +59,12 @@ namespace Calypso
             item.Click += (_, _) => ImportWizardModal.RunFromDownloads();
             fileToolStripMenuItem.DropDownItems.Insert(0, item);
             fileToolStripMenuItem.DropDownItems.Insert(1, new ToolStripSeparator());
-            // re-theme the new items
+
+            var detectItem = new ToolStripMenuItem("Run Photo Detection...");
+            detectItem.Click += (_, _) => PhotoDetectionModal.Run();
+            fileToolStripMenuItem.DropDownItems.Insert(2, detectItem);
+            fileToolStripMenuItem.DropDownItems.Insert(3, new ToolStripSeparator());
+
             Calypso.UI.ThemeManager.Apply(menuStrip1);
         }
 
