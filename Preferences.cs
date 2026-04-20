@@ -15,6 +15,10 @@ namespace Calypso
         public Preferences()
         {
             InitializeComponent();
+            Calypso.UI.ThemeManager.Apply(this);
+            this.BackColor = Calypso.UI.Theme.Background;
+            this.ForeColor = Calypso.UI.Theme.Foreground;
+            this.HandleCreated += (_, _) => Calypso.UI.ThemeManager.SetImmersiveDarkMode(this.Handle, Calypso.UI.Theme.IsDark);
             checkboxShowFilenames.Checked = PreferencesManager.Prefs.ShowFilenames;
             checkboxDeleteSourceOnDragIn.Checked = PreferencesManager.Prefs.DeleteSourceOnDragIn;
         }

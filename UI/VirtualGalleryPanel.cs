@@ -64,9 +64,9 @@ namespace Calypso.UI
         public static bool IsDraggingOut { get; private set; }
 
         // ── colors ────────────────────────────────────────────────────────
-private static readonly Color SelectionColor    = Color.FromArgb(0, 120, 215);
-        private static readonly Color SelectionOverlay  = Color.FromArgb(40, 0, 120, 215);
-        private static readonly Color LabelForeground   = Color.FromArgb(220, 220, 220);
+        private static Color SelectionColor   => Theme.Accent;
+        private static Color SelectionOverlay => Theme.AccentOverlay;
+        private static Color LabelForeground  => Theme.Foreground;
 
         // ── events ────────────────────────────────────────────────────────
         public event EventHandler<GalleryItem>?        ItemDoubleClicked;
@@ -79,6 +79,15 @@ private static readonly Color SelectionColor    = Color.FromArgb(0, 120, 215);
         private int _loadedCount = 0;
         public event EventHandler<float>? LoadProgressChanged;
 
+        [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+        private static extern int SetWindowTheme(IntPtr hwnd, string pszSubAppName, string? pszSubIdList);
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            SetWindowTheme(Handle, "DarkMode_Explorer", null);
+        }
+
         public VirtualGalleryPanel()
         {
             SetStyle(
@@ -87,7 +96,7 @@ private static readonly Color SelectionColor    = Color.FromArgb(0, 120, 215);
                 ControlStyles.UserPaint             |
                 ControlStyles.ResizeRedraw,
                 true);
-            BackColor = Color.FromArgb(70, 70, 70);
+            BackColor = Theme.Background;
             AllowDrop  = true;
             TabStop    = true;
         }

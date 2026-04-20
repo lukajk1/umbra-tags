@@ -23,6 +23,11 @@ namespace Calypso
             CreateSingleton();
 
             InitializeComponent();
+            ThemeManager.Apply(this);
+            this.BackColor = Theme.Background;
+            this.ForeColor = Theme.Foreground;
+            ThemeManager.SetImmersiveDarkMode(this.Handle, Theme.IsDark);
+            AddThemeMenu();
             this.KeyPreview = true;
             this.FormClosed += MainWindow_FormClosed;
             this.MouseWheel += MainWindow_MouseWheel;
@@ -33,8 +38,7 @@ namespace Calypso
 
             comboBoxResultsNum.SelectedIndex = 0;
 
-            // start initialization
-            Gallery.Init(this); // in order to load the last session properly gallery references must be initialized first
+            Gallery.Init(this);
             StatusBar.Init(this);
             ImageInfoPanel.Init(this);
             Searchbar.Init(this);
@@ -48,21 +52,60 @@ namespace Calypso
             initialized = true;
         }
 
+        private void AddThemeMenu()
+        {
+            var themeMenu = new ToolStripMenuItem("Theme");
+
+            var darkItem   = new ToolStripMenuItem("Dark")   { Name = "themeItemDark" };
+            var lightItem  = new ToolStripMenuItem("Light")  { Name = "themeItemLight" };
+            var systemItem = new ToolStripMenuItem("System") { Name = "themeItemSystem" };
+
+            darkItem.Click   += (_, _) => SetTheme(ThemeMode.Dark);
+            lightItem.Click  += (_, _) => SetTheme(ThemeMode.Light);
+            systemItem.Click += (_, _) => SetTheme(ThemeMode.System);
+
+            themeMenu.DropDownItems.AddRange(new ToolStripItem[] { darkItem, lightItem, systemItem });
+            viewToolStripMenuItem.DropDownItems.Add(new ToolStripSeparator());
+            viewToolStripMenuItem.DropDownItems.Add(themeMenu);
+
+            UpdateThemeCheckmarks();
+        }
+
+        private void SetTheme(ThemeMode mode)
+        {
+            ThemeManager.SetTheme(mode);
+            UpdateThemeCheckmarks();
+        }
+
+        private void UpdateThemeCheckmarks()
+        {
+            foreach (ToolStripItem item in viewToolStripMenuItem.DropDownItems)
+            {
+                if (item is not ToolStripMenuItem sub || sub.Text != "Theme") continue;
+                foreach (ToolStripItem child in sub.DropDownItems)
+                {
+                    if (child is ToolStripMenuItem mi)
+                        mi.Checked = mi.Name switch
+                        {
+                            "themeItemDark"   => ThemeManager.CurrentMode == ThemeMode.Dark,
+                            "themeItemLight"  => ThemeManager.CurrentMode == ThemeMode.Light,
+                            "themeItemSystem" => ThemeManager.CurrentMode == ThemeMode.System,
+                            _                 => false
+                        };
+                }
+            }
+        }
+
         public void UpdateTitle(string libraryName)
         {
             this.Text = $"{ProgramName} {GlobalValues.Version} - {libraryName}";
         }
         private void CreateSingleton()
         {
-
             if (i == null)
-            {
                 i = this;
-            }
             else
-            {
                 Util.ShowErrorDialog("There are multiple main window instances.");
-            }
         }
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
@@ -80,8 +123,6 @@ namespace Calypso
 
         public void LoadSession(Session session)
         {
-            // Use a sensible windowed size so Windows has a valid restore bound
-            // if the session was always maximized or is first-run.
             var screen = Screen.FromControl(this).WorkingArea;
             bool sizeValid = session.WindowWidth >= MinimumSize.Width
                           && session.WindowHeight >= MinimumSize.Height
@@ -122,7 +163,6 @@ namespace Calypso
             );
         }
 
-        // overload to insert custom library into the session object
         public Session CaptureCurrentSession(Library lib)
         {
             return new Session(
@@ -136,99 +176,45 @@ namespace Calypso
             );
         }
 
-        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Close();
-        }
+        private void exitToolStripMenuItem_Click(object sender, EventArgs e) => Close();
+
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
         {
             string message = $"Calypso Image Manager {GlobalValues.Version}\nSupported file types: .jpg, .jpeg, .jfif, .png, .bmp, .gif, .webp\nCreated by Luka Kawashima\n\nOpen Source Notices:\nImazen.WebP (MIT) — Copyright 2012–2026 Imazen LLC\nhttps://github.com/imazen/libwebp-net\nNewtonsoft.Json (MIT) — Copyright 2007 James Newton-King\nhttps://github.com/JamesNK/Newtonsoft.Json";
-            string title = "About Calypso";
-            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(message, "About Calypso", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void textBox1_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
             {
-                // suppress potential sfx
                 e.SuppressKeyPress = true;
                 e.Handled = true;
-
-
-                if (File.Exists(searchBox.Text))
-                {
-                    // handle file explorer capabilities at some point? 
-                }
-                else
-                {
+                if (!File.Exists(searchBox.Text))
                     Searchbar.Search(searchBox.Text);
-                }
-
             }
         }
 
-        private void toolStripMenuItem5_Click(object sender, EventArgs e)
-        {
-
-            LayoutManager.SetLayout(LayoutManager.DefaultLayout);
-        }
-
-        private void toolStripMenuItem3_Click(object sender, EventArgs e)
-        {
-            LayoutManager.SetLayout(LayoutManager.LargeWindow);
-        }
-
-        private void toolStripMenuItem9_Click(object sender, EventArgs e)
-        {
-            Commands.AddFilesViaDialog();
-        }
-
-        private void toolStripMenuItem1_Click_1(object sender, EventArgs e)
-        {
-            DB.OpenCurrentLibrarySourceFolder();
-        }
-
-        private void checkBoxRandomize_CheckedChanged(object sender, EventArgs e)
-        {
-            Searchbar.RepeatLastSearch();
-        }
-
-        private void newGalleryToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            DB.AddNewLibrary();
-        }
-
-        private void removeTagToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            TagTreePanel.i.RenameTag(sender);
-        }
-
-        private void deleteToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-
-            TagTreePanel.i.DeleteTag(sender);
-        }
-
-        private void addChildTagToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            TagTreePanel.i.AddChildTag(sender);
-        }
+        private void toolStripMenuItem5_Click(object sender, EventArgs e) => LayoutManager.SetLayout(LayoutManager.DefaultLayout);
+        private void toolStripMenuItem3_Click(object sender, EventArgs e) => LayoutManager.SetLayout(LayoutManager.LargeWindow);
+        private void toolStripMenuItem9_Click(object sender, EventArgs e) => Commands.AddFilesViaDialog();
+        private void toolStripMenuItem1_Click_1(object sender, EventArgs e) => DB.OpenCurrentLibrarySourceFolder();
+        private void checkBoxRandomize_CheckedChanged(object sender, EventArgs e) => Searchbar.RepeatLastSearch();
+        private void newGalleryToolStripMenuItem_Click(object sender, EventArgs e) => DB.AddNewLibrary();
+        private void removeTagToolStripMenuItem_Click(object sender, EventArgs e) => TagTreePanel.i.RenameTag(sender);
+        private void deleteToolStripMenuItem_Click(object sender, EventArgs e) => TagTreePanel.i.DeleteTag(sender);
+        private void addChildTagToolStripMenuItem_Click(object sender, EventArgs e) => TagTreePanel.i.AddChildTag(sender);
 
         private void addNewTagToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (Util.TextPrompt("Set tag name: ", out string newTag))
-            {
                 DB.appdata.ActiveLibrary.AddTagToTree(new TagNode(newTag));
-            }
         }
 
         private void addTagButton_Click(object sender, EventArgs e)
         {
             if (Util.TextPrompt("Set tag name: ", out string newTag))
-            {
                 DB.appdata.ActiveLibrary.AddTagToTree(new TagNode(newTag));
-            }
         }
 
         private void hideFilenamesToolStripMenuItem_Click(object sender, EventArgs e)
