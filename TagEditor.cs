@@ -15,7 +15,7 @@ namespace Calypso
     public partial class TagEditor : Form
     {
         private MainWindow? mainW;
-        List<TileTag> selection = new();
+        List<Calypso.UI.GalleryItem> selection = new();
         private ImageData currentImageData;
         private List<string> commonTags = new();
 
@@ -59,13 +59,12 @@ namespace Calypso
             };
         }
 
-        public void Populate(List<TileTag> selection)
+        public void Populate(List<Calypso.UI.GalleryItem> selection)
         {
             this.selection = selection;
 
-            // get intersection of all tags on all tiletag objects. These are the ones that will be checked when displaying
             commonTags = selection
-                .Select(t => t._ImageData.Tags)
+                .Select(t => t.ImageData.Tags)
                 .Aggregate((prev, next) => prev.Intersect(next).ToList());
 
             GenerateTagTree(DB.appdata.ActiveLibrary.tagTree, DB.appdata.ActiveLibrary.tagDict);
@@ -150,35 +149,19 @@ namespace Calypso
                 }
             }
 
-            // remove all tags from all images that are not in tagsToAdd
             List<string> toRemove = new();
-            foreach (TileTag tTag in selection)
+            foreach (var item in selection)
             {
-                foreach (string tag in tTag._ImageData.Tags)
+                foreach (string tag in item.ImageData.Tags)
                 {
                     if (!tagsToAdd.Contains(tag))
-                    {
-                        //Debug.WriteLine(tag + "is not contained in tags to add.. removing..");
                         toRemove.Add(tag);
-                    }
                 }
-
-                // remove tags from imagedata
                 foreach (string tag in toRemove)
-                {
-                    DB.appdata.ActiveLibrary.UntagImage(tag, tTag._ImageData);
-                }
+                    DB.appdata.ActiveLibrary.UntagImage(tag, item.ImageData);
             }
 
-
-            //Debug.WriteLine("should only be preserving" + tagsToAdd.Count + "tags");
-
-            // grab imagelist from selection
-            List<ImageData> images = new();
-            foreach (var tTag in selection)
-            {
-                images.Add(tTag._ImageData);
-            }
+            List<ImageData> images = selection.Select(it => it.ImageData).ToList();
 
             // tag images with each tag from checkedtags
             foreach (string tag in tagsToAdd)

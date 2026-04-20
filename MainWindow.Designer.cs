@@ -55,7 +55,7 @@
             aboutToolStripMenuItem = new ToolStripMenuItem();
             tagToolStripMenuItem = new ToolStripMenuItem();
             addNewTagToolStripMenuItem = new ToolStripMenuItem();
-            flowLayoutGallery = new FlowLayoutPanel();
+            galleryPanel = new Calypso.UI.VirtualGalleryPanel();
             searchBox = new TextBox();
             statusStrip1 = new StatusStrip();
             toolStripProgressBar1 = new ToolStripProgressBar();
@@ -287,19 +287,14 @@
             addNewTagToolStripMenuItem.Size = new Size(192, 22);
             addNewTagToolStripMenuItem.Text = "&Add New Tag";
             addNewTagToolStripMenuItem.Click += addNewTagToolStripMenuItem_Click;
-            // 
-            // flowLayoutGallery
-            // 
-            flowLayoutGallery.AutoScroll = true;
-            flowLayoutGallery.AutoSize = true;
-            flowLayoutGallery.BackColor = SystemColors.ControlDark;
-            flowLayoutGallery.BorderStyle = BorderStyle.FixedSingle;
-            flowLayoutGallery.Dock = DockStyle.Fill;
-            flowLayoutGallery.Location = new Point(0, 53);
-            flowLayoutGallery.Name = "flowLayoutGallery";
-            flowLayoutGallery.Padding = new Padding(12, 12, 12, 45);
-            flowLayoutGallery.Size = new Size(705, 762);
-            flowLayoutGallery.TabIndex = 7;
+            //
+            // galleryPanel
+            //
+            galleryPanel.Dock = DockStyle.Fill;
+            galleryPanel.Location = new Point(0, 53);
+            galleryPanel.Name = "galleryPanel";
+            galleryPanel.Size = new Size(705, 762);
+            galleryPanel.TabIndex = 7;
             // 
             // searchBox
             // 
@@ -462,7 +457,7 @@
             // 
             // middleFillPanelContainer
             // 
-            middleFillPanelContainer.Controls.Add(flowLayoutGallery);
+            middleFillPanelContainer.Controls.Add(galleryPanel);
             middleFillPanelContainer.Controls.Add(searchPanel);
             middleFillPanelContainer.Dock = DockStyle.Fill;
             middleFillPanelContainer.Location = new Point(0, 0);
@@ -652,7 +647,7 @@
         public ToolStripMenuItem aboutToolStripMenuItem;
         public ToolStripMenuItem fileToolStripMenuItem;
         public ToolStripMenuItem exitToolStripMenuItem;
-        public FlowLayoutPanel flowLayoutGallery;
+        public Calypso.UI.VirtualGalleryPanel galleryPanel;
         public StatusStrip statusStrip1;
         public ToolStripPanel BottomToolStripPanel;
         public ToolStripPanel TopToolStripPanel;
