@@ -59,6 +59,7 @@ namespace Calypso
             return System.IO.Directory.GetFiles(path, "*.*")
                                 .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
                                             f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+                                            f.EndsWith(".jfif", StringComparison.OrdinalIgnoreCase) ||
                                             f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
                                             f.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) ||
                                             f.EndsWith(".gif", StringComparison.OrdinalIgnoreCase) ||
@@ -116,7 +117,7 @@ namespace Calypso
 
             return ext switch
             {
-                ".jpg" or ".jpeg" => ImageFormat.Jpeg,
+                ".jpg" or ".jpeg" or ".jfif" => ImageFormat.Jpeg,
                 ".png" => ImageFormat.Png,
                 ".bmp" => ImageFormat.Bmp,
                 ".gif" => ImageFormat.Gif,

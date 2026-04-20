@@ -38,4 +38,4 @@ Licensed under the MIT License. https://github.com/JamesNK/Newtonsoft.Json
 
 ## Supported File Types
 
-`.jpg` `.jpeg` `.png` `.bmp` `.gif` `.webp`
+`.jpg` `.jpeg` `.jfif` `.png` `.bmp` `.gif` `.webp`

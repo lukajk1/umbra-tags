@@ -108,6 +108,21 @@ namespace Calypso
             Save();
         }
 
+        private static void BackfillDHashes()
+        {
+            foreach (var img in appdata.ActiveLibrary.filenameDict.Values)
+            {
+                if (img.DHash != 0) continue;
+                if (!File.Exists(img.Filepath)) continue;
+                try
+                {
+                    using var bmp = Util.LoadImage(img.Filepath);
+                    img.DHash = DHash.Compute(bmp);
+                }
+                catch { }
+            }
+        }
+
         #region miscellaneous helpers
         public static void DeleteImageData(List<ImageData> imgDataList)
         {
@@ -163,10 +178,23 @@ namespace Calypso
             foreach (string fp in filepaths)
             {
                 string ext = Path.GetExtension(fp).ToLower();
-                if (ext is not (".jpg" or ".jpeg" or ".png" or ".bmp" or ".gif" or ".webp"))
+                if (ext is not (".jpg" or ".jpeg" or ".jfif" or ".png" or ".bmp" or ".gif" or ".webp"))
                     continue;
 
                 if (!File.Exists(fp)) continue;
+
+                // Check for similar images before importing
+                ulong incomingHash;
+                using (var bmp = Util.LoadImage(fp))
+                    incomingHash = DHash.Compute(bmp);
+
+var similar = lib.filenameDict.Values
+                    .FirstOrDefault(img => DHash.IsSimilar(incomingHash, img.DHash));
+                if (similar != null)
+                {
+                    Util.ShowErrorDialog($"This file is similar to \"{similar.Filename}\" and was not imported.");
+                    continue;
+                }
 
                 string filename = Path.GetFileName(fp);
                 string destPath = Path.Combine(lib.Dirpath, filename);
@@ -186,7 +214,7 @@ namespace Calypso
                 string thumbPath = Util.CreateThumbnail(lib, destPath);
                 if (string.IsNullOrEmpty(thumbPath)) continue;
 
-                var imgData = new ImageData(destPath, thumbPath);
+                var imgData = new ImageData(destPath, thumbPath) { DHash = incomingHash };
                 lib.filenameDict[destPath] = imgData;
                 added.Add(imgData);
             }

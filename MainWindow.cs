@@ -138,7 +138,7 @@ namespace Calypso
         }
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            string message = $"Calypso Image Manager {GlobalValues.Version}\nSupported file types: .jpg, .jpeg, .png, .bmp, .gif, .webp\nCreated by lukajk\n\nOpen Source Notices:\nImazen.WebP (MIT) — Copyright 2012–2026 Imazen LLC\nhttps://github.com/imazen/libwebp-net\nNewtonsoft.Json (MIT) — Copyright 2007 James Newton-King\nhttps://github.com/JamesNK/Newtonsoft.Json";
+            string message = $"Calypso Image Manager {GlobalValues.Version}\nSupported file types: .jpg, .jpeg, .jfif, .png, .bmp, .gif, .webp\nCreated by lukajk\n\nOpen Source Notices:\nImazen.WebP (MIT) — Copyright 2012–2026 Imazen LLC\nhttps://github.com/imazen/libwebp-net\nNewtonsoft.Json (MIT) — Copyright 2007 James Newton-King\nhttps://github.com/JamesNK/Newtonsoft.Json";
             string title = "About Calypso";
             MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }

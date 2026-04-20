@@ -26,14 +26,14 @@ namespace Calypso
     }
     public class ImageData : ContentData
     {
-        public string ThumbnailPath {  get; }
+        public string ThumbnailPath { get; }
+        public ulong DHash { get; set; }
+
         public ImageData(string filepath, string thumbnailPath)
         {
             Filepath = filepath;
             Filename = Path.GetFileName(Filepath);
-
             ThumbnailPath = thumbnailPath;
         }
-
     }
 }

@@ -166,6 +166,7 @@ namespace Calypso
             }
 
             SetAllAndUntaggedToDict();
+            BackfillDHashes();
             Save();
             //Debug.WriteLine("hopefullythis works" + appdata.ActiveLibrary.filenameDict.Count);
 
