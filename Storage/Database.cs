@@ -273,12 +273,25 @@ namespace Calypso
         /// Manually sync the active library against its directory:
         /// picks up new files, prunes deleted ones, generates missing thumbnails, saves.
         /// </summary>
-        public static void SyncLibrary()
+        public static void RefreshLibrary()
         {
             if (ActiveLibrary == null) return;
             SyncLibraryFiles(ActiveLibrary);
+            PurgeReservedTags(ActiveLibrary);
             Save();
+            TagTreePanel.i.Populate(ActiveLibrary.tagTree, ActiveLibrary.tagDict);
             Searchbar.RepeatLastSearch();
+        }
+
+        private static void PurgeReservedTags(Library lib)
+        {
+            var reserved = lib.tagTree.tagNodes
+                .Where(n => ReservedSearchTerms.Contains(n.Name))
+                .Select(n => n.Name)
+                .ToList();
+
+            foreach (string name in reserved)
+                lib.DeleteTagFromTree(name);
         }
 
         private static void SyncLibraryFiles(Library lib)

@@ -50,7 +50,7 @@ namespace Calypso
         // Fires only when the searchbox is not focused.
         public static bool HandleContextual(Keys keyData)
         {
-            if (keyData == Keys.F5) { DB.SyncLibrary(); return true; }
+            if (keyData == Keys.F5) { DB.RefreshLibrary(); return true; }
 
             // Layout shortcuts
             if (keyData == (Keys.Control | Keys.D1)) { LayoutManager.SetLayout(LayoutManager.DefaultLayout); return true; }
