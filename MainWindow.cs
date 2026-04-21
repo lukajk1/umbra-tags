@@ -18,7 +18,7 @@ namespace Calypso
         public static bool initialized;
 
         const string ProgramName = "Umbra Tags";
-        public MainWindow()
+        public MainWindow(bool deferInit = false)
         {
             CreateSingleton();
 
@@ -47,10 +47,23 @@ namespace Calypso
             LayoutManager.Init(this);
             ShortcutHandler.Init(this);
 
-            DB.Init(this);
+            if (!deferInit)
+                PostInit();
+        }
+
+        /// <summary>
+        /// Completes startup. When going through Bootstrapper, DB.InitBackground + DB.InitUI
+        /// are called first, then this. When not using Bootstrapper, this calls DB.Init itself.
+        /// </summary>
+        public void PostInit(bool dbAlreadyInitialized = false)
+        {
+            if (!dbAlreadyInitialized)
+                DB.Init(this);
             new TagTreePanel(this);
             LibraryUIManager.Init(this);
             initialized = true;
+            if (dbAlreadyInitialized)
+                DB.InitUIFinal();
         }
 
         private void AddImportWizardMenuItem()

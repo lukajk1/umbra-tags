@@ -42,7 +42,14 @@ namespace Calypso
 
         // ── init ──────────────────────────────────────────────────────────
 
-        public static bool Init(MainWindow mainW)
+        // ── two-phase init (call InitBackground on a Task, then InitUI on the UI thread) ──
+
+        /// <summary>
+        /// Phase 1 — safe to run on a background thread.
+        /// Sets up paths, loads appdata + library files, generates missing thumbnails.
+        /// Returns false if no library could be found or created (must then abort).
+        /// </summary>
+        public static bool InitBackground()
         {
             string roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             _appFolder      = Path.Combine(roaming, "Umbra Tags");
@@ -51,24 +58,75 @@ namespace Calypso
             _appdataBakPath = Path.Combine(_appFolder, "database.save.bak");
             _appdataTmpPath = Path.Combine(_appFolder, "database.save.tmp");
 
-            _autoSaveTimer = new System.Windows.Forms.Timer { Interval = 5 * 60 * 1000 };
-            _autoSaveTimer.Tick += (_, _) => Save();
-            _autoSaveTimer.Start();
-
             if (Load() || (appdata = NewAppdata()!) != null)
             {
                 PreferencesManager.Init();
-                mainW.LoadSession(appdata.LastSession);
-                mainW.ApplyPreferences(PreferencesManager.Prefs);
                 var toLoad = appdata.LastSession.LastActiveLibrary
                           ?? appdata.Libraries.FirstOrDefault();
-                LoadLibrary(toLoad, search: false);
-                if (ActiveLibrary != null)
-                    Searchbar.Search(appdata.LastSession.LastSearch ?? "all");
+                // Load library files + sync disk (no UI calls yet)
+                LoadLibraryBackground(toLoad);
                 return true;
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Phase 2 — must run on the UI thread.
+        /// Wires up the timer, applies session/prefs to the window, populates the tag tree, runs initial search.
+        /// </summary>
+        public static void InitUI(MainWindow mainW)
+        {
+            _autoSaveTimer = new System.Windows.Forms.Timer { Interval = 5 * 60 * 1000 };
+            _autoSaveTimer.Tick += (_, _) => Save();
+            _autoSaveTimer.Start();
+
+            mainW.LoadSession(appdata.LastSession);
+            mainW.ApplyPreferences(PreferencesManager.Prefs);
+
+            if (ActiveLibrary != null)
+            {
+                MainWindow.i.UpdateTitle(ActiveLibrary.Name);
+                OnNewLibraryLoaded?.Invoke(ActiveLibrary);
+            }
+        }
+
+        /// <summary>
+        /// Final UI wiring that requires TagTreePanel and other post-init components to exist.
+        /// Called from MainWindow.PostInit after TagTreePanel is constructed.
+        /// </summary>
+        public static void InitUIFinal()
+        {
+            if (ActiveLibrary == null) return;
+            TagTreePanel.i.Populate(ActiveLibrary.tagTree, ActiveLibrary.tagDict);
+            Searchbar.Search(appdata.LastSession.LastSearch ?? "all");
+        }
+
+        /// <summary>
+        /// Background-safe portion of LoadLibrary: syncs files, saves. No UI calls.
+        /// </summary>
+        private static void LoadLibraryBackground(LibraryStub? stub)
+        {
+            var lib = stub != null ? LoadLibraryFile(stub) : null;
+            if (lib == null) return;
+
+            ActiveLibrary         = lib;
+            appdata.ActiveLibrary = stub;
+
+            if (!Directory.Exists(lib.Dirpath)) return;
+
+            string thumbPath = Path.Combine(lib.Dirpath, "data");
+            if (!Directory.Exists(thumbPath)) Directory.CreateDirectory(thumbPath);
+
+            SyncLibraryFiles(lib);
+            Save();
+        }
+
+        public static bool Init(MainWindow mainW)
+        {
+            if (!InitBackground()) return false;
+            InitUI(mainW);
+            return true;
         }
 
         // ── save ──────────────────────────────────────────────────────────
