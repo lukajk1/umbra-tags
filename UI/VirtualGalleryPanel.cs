@@ -328,11 +328,11 @@ namespace Calypso.UI
                 g.DrawRectangle(pen, tb.X, tb.Y, tb.Width - 1, tb.Height - 1);
             }
 
-            // video badge: small ▶ in bottom-right corner
+            // video badge: ▶ centred on the tile
             if (_items[index].ImageData.IsVideo)
             {
-                const int BadgeSize = 22;
-                var badge = new Rectangle(tb.Right - BadgeSize - 3, tb.Bottom - BadgeSize - 3, BadgeSize, BadgeSize);
+                const int BadgeSize = 36;
+                var badge = new Rectangle(tb.X + (tb.Width - BadgeSize) / 2, tb.Y + (tb.Height - BadgeSize) / 2, BadgeSize, BadgeSize);
                 using var bgBrush = new SolidBrush(Color.FromArgb(160, 0, 0, 0));
                 g.FillEllipse(bgBrush, badge);
                 using var fgBrush = new SolidBrush(Color.FromArgb(220, 255, 255, 255));

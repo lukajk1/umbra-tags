@@ -54,18 +54,18 @@ namespace Calypso
                 foreach (var img in list)
                 {
                     if (!File.Exists(img.Filepath))
-                    {
                         toRemove.Add(img);
-                    }
                 }
 
                 foreach (var item in toRemove)
-                {
                     list.Remove(item);
-                }
             }
 
-            TagTreePanel.i.Populate(tagTree, tagDict); // manually refresh so counts update..
+            // Also remove from filenameDict so stale entries are not persisted
+            foreach (var img in toRemove)
+                filenameDict.Remove(img.Filepath);
+
+            TagTreePanel.i.Populate(tagTree, tagDict);
         }
 
         private bool FormatAndValidateNewTag(string input, out string output)
