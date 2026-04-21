@@ -286,7 +286,7 @@ namespace Calypso
         private static void PurgeReservedTags(Library lib)
         {
             var reserved = lib.tagTree.tagNodes
-                .Where(n => ReservedSearchTerms.Contains(n.Name))
+                .Where(n => VirtualTags.Contains(n.Name))
                 .Select(n => n.Name)
                 .ToList();
 

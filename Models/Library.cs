@@ -122,9 +122,9 @@ namespace Calypso
                 return false;
             }
 
-            if (DB.ReservedSearchTerms.Contains(newTag.Name))
+            if (DB.VirtualTags.Contains(newTag.Name))
             {
-                Util.ShowErrorDialog($"\"{newTag.Name}\" is a special-case tag and cannot be used as a tag name.");
+                Util.ShowErrorDialog($"\"{newTag.Name}\" is a protected tag and cannot be used as a tag name.");
                 return false;
             }
 

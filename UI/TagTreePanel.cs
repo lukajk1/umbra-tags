@@ -63,6 +63,10 @@ namespace Calypso
             nodeRandom.Tag = "randimg";
             tagTree.Nodes.Insert(0, nodeRandom);
 
+            TreeNode nodeRandomTag = new TreeNode("Random Tag");
+            nodeRandomTag.Tag = "randtag";
+            tagTree.Nodes.Insert(0, nodeRandomTag);
+
             TreeNode nodeNone = tagTree.Nodes.Insert(0, $"Untagged ({tagDict["untagged"].Count})");
             nodeNone.Tag = "untagged";
 

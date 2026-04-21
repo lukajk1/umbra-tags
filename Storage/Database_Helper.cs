@@ -14,11 +14,13 @@ namespace Calypso
         public static Dictionary<string, List<ImageData>> tagIndex = new();
 
         /// <summary>
-        /// Search terms that are handled as built-in queries and cannot be used as tag names.
+        /// Virtual tags (shown to users as "protected tags") appear at the top of the tag tree
+        /// as built-in searches. They are not stored in the tag data model and cannot be used
+        /// as user-defined tag names.
         /// </summary>
-        public static readonly HashSet<string> ReservedSearchTerms = new(StringComparer.OrdinalIgnoreCase)
+        public static readonly HashSet<string> VirtualTags = new(StringComparer.OrdinalIgnoreCase)
         {
-            "all", "untagged", "archived", "randimg", "allvideos"
+            "all", "untagged", "archived", "randimg", "allvideos", "randtag"
         };
 
         #region searching
@@ -40,6 +42,18 @@ namespace Calypso
                     results.Add(img);
                     Gallery.Populate(results);
                     ImageInfoPanel.Display(img);
+                    return;
+                }
+            }
+            else if (stripped == "randtag")
+            {
+                var userTags = ActiveLibrary.tagTree.tagNodes
+                    .Where(n => !VirtualTags.Contains(n.Name))
+                    .ToList();
+                if (userTags.Count > 0)
+                {
+                    string picked = userTags[new Random().Next(userTags.Count)].Name;
+                    Searchbar.Search(picked);
                     return;
                 }
             }
