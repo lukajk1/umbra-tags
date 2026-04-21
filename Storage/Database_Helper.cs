@@ -127,14 +127,13 @@ namespace Calypso
             foreach (ImageData imgData in imgDataList)
             {
                 if (File.Exists(imgData.ThumbnailPath))
-                {
-                    File.Delete(imgData.ThumbnailPath);
-                }
+                    try { File.Delete(imgData.ThumbnailPath); } catch { }
 
                 if (File.Exists(imgData.Filepath))
-                {
-                    File.Delete(imgData.Filepath);
-                }
+                    try { File.Delete(imgData.Filepath); } catch { }
+
+                // Remove from filenameDict so the entry is not persisted to the library file
+                ActiveLibrary.filenameDict.Remove(imgData.Filepath);
             }
 
             ActiveLibrary.FlushDeletedImages();

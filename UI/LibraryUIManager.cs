@@ -46,6 +46,8 @@ namespace Calypso
 
                 mainW.openExistingLibraryToolStripMenuItem.DropDownItems.Insert(0, newItem);
             }
+
+            Calypso.UI.ThemeManager.Apply(mainW.menuStrip1);
         }
         static void HandleLibraryAction(string action, LibraryStub stub)
         {

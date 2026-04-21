@@ -98,6 +98,7 @@ namespace Calypso
             viewToolStripMenuItem.DropDownItems.Add(themeMenu);
 
             UpdateThemeCheckmarks();
+            Calypso.UI.ThemeManager.Apply(menuStrip1);
         }
 
         private void SetTheme(ThemeMode mode)
