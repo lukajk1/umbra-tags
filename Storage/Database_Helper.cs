@@ -12,6 +12,15 @@ namespace Calypso
     internal static partial class DB
     {
         public static Dictionary<string, List<ImageData>> tagIndex = new();
+
+        /// <summary>
+        /// Search terms that are handled as built-in queries and cannot be used as tag names.
+        /// </summary>
+        public static readonly HashSet<string> ReservedSearchTerms = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "all", "untagged", "archived", "randimg", "allvideos"
+        };
+
         #region searching
         public static void Search(string searchTextRaw, bool randomize, int upperLimit)
         {
@@ -37,6 +46,11 @@ namespace Calypso
             else if (stripped == "archived")
             {
                 results = ActiveLibrary.filenameDict.Values.Where(img => img.IsArchived).ToList();
+            }
+            else if (stripped == "allvideos")
+            {
+                results = ActiveLibrary.filenameDict.Values
+                    .Where(img => !img.IsArchived && img.IsVideo).ToList();
             }
             else
             {

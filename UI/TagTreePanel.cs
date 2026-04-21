@@ -70,6 +70,10 @@ namespace Calypso
             TreeNode nodeAll = tagTree.Nodes.Insert(0, $"All Images ({activeCount})");
             nodeAll.Tag = "all";
 
+            int videoCount = DB.ActiveLibrary?.filenameDict.Values.Count(img => !img.IsArchived && img.IsVideo) ?? 0;
+            TreeNode nodeVideos = tagTree.Nodes.Insert(1, $"All Videos ({videoCount})");
+            nodeVideos.Tag = "allvideos";
+
             tagTree.ExpandAll(); 
             
         }

@@ -122,6 +122,12 @@ namespace Calypso
                 return false;
             }
 
+            if (DB.ReservedSearchTerms.Contains(newTag.Name))
+            {
+                Util.ShowErrorDialog($"\"{newTag.Name}\" is a special-case tag and cannot be used as a tag name.");
+                return false;
+            }
+
             foreach (TagNode node in tagTree.tagNodes)
             {
                 if (node.Name == newTag.Name)
