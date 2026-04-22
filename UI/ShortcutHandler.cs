@@ -63,7 +63,6 @@ namespace Calypso
 
             // Gallery actions
             if (keyData == Keys.Space) { if (MainWindow.FocusedPane == Pane.Gallery) Gallery.OpenTagEditorByCommand(); return true; }
-            if (keyData == (Keys.Control | Keys.T)) { Gallery.OpenTagEditorByCommand(); return true; }
             if (keyData == Keys.Delete) { if (MainWindow.FocusedPane == Pane.Gallery) Gallery.DeleteSelected(); return true; }
             if (keyData == Keys.Enter) { if (MainWindow.FocusedPane == Pane.Gallery) Gallery.OpenSelected(); return true; }
             if (keyData == Keys.Left || keyData == Keys.Right || keyData == Keys.Up || keyData == Keys.Down)

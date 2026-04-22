@@ -94,7 +94,7 @@
             button4.Name = "button4";
             button4.Size = new Size(178, 23);
             button4.TabIndex = 6;
-            button4.Text = "Import and Keep Both";
+            button4.Text = "Import Anyway (Keep Both)";
             button4.UseVisualStyleBackColor = true;
             button4.Click += buttonImportAnyway_Click;
             // 
