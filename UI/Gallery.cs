@@ -135,6 +135,9 @@ namespace Calypso
         public static void DeleteSelected()
         {
             var items = panel!.GetSelectedItems();
+            if (items.Count > 3 &&
+                Util.ShowConfirmDialog($"Delete {items.Count} images? This cannot be undone.") != DialogResult.OK)
+                return;
             panel.RemoveItems(items);
             DB.DeleteImageData(items.Select(it => it.ImageData).ToList());
         }
