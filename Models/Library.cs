@@ -13,6 +13,133 @@ namespace Calypso
         public TagTree tagTree { get; set; } = new();
         public Dictionary<string, List<ImageData>> tagDict { get; set; } = new();
         public Dictionary<string, ImageData> filenameDict { get; set; } = new();
+        public List<TagGroup> Groups { get; set; } = new();
+
+        public const string UngroupedName = "Ungrouped";
+
+        // ── group helpers ─────────────────────────────────────────────────
+
+        /// <summary>Returns the group that contains this tag, or null.</summary>
+        public TagGroup? GetGroupForTag(string tagName)
+        {
+            foreach (var g in Groups)
+                if (g.Tags.Contains(tagName)) return g;
+            return null;
+        }
+
+        /// <summary>Ensures an Ungrouped group exists and is last in the list.</summary>
+        public TagGroup EnsureUngrouped()
+        {
+            var ug = Groups.FirstOrDefault(g => g.Name == UngroupedName);
+            if (ug == null)
+            {
+                ug = new TagGroup(UngroupedName);
+                Groups.Add(ug);
+            }
+            else
+            {
+                // Keep Ungrouped last
+                Groups.Remove(ug);
+                Groups.Add(ug);
+            }
+            return ug;
+        }
+
+        /// <summary>
+        /// Ensures every tag in the tree belongs to a group.
+        /// Tags not found in any group are added to Ungrouped.
+        /// Also removes group entries for tags that no longer exist.
+        /// </summary>
+        public void SyncGroupMembership()
+        {
+            var allTagNames = new HashSet<string>(tagTree.tagNodes.Select(n => n.Name));
+
+            // Remove stale entries from all groups
+            foreach (var g in Groups)
+                g.Tags.RemoveAll(t => !allTagNames.Contains(t));
+
+            // Find tags not in any group
+            var assigned = new HashSet<string>(Groups.SelectMany(g => g.Tags));
+            var unassigned = allTagNames.Where(t => !assigned.Contains(t)).ToList();
+
+            if (unassigned.Count > 0)
+            {
+                var ug = EnsureUngrouped();
+                foreach (var t in unassigned)
+                    ug.Tags.Add(t);
+            }
+            else
+            {
+                EnsureUngrouped(); // still ensure it exists and is last
+            }
+        }
+
+        /// <summary>Moves a tag (and its descendants) to the target group.</summary>
+        public void MoveTagToGroup(string tagName, string groupName)
+        {
+            // Remove from current group
+            foreach (var g in Groups)
+                g.Tags.Remove(tagName);
+
+            var target = Groups.FirstOrDefault(g => g.Name == groupName);
+            if (target == null)
+            {
+                target = new TagGroup(groupName);
+                // Insert before Ungrouped
+                int ugIndex = Groups.FindIndex(g => g.Name == UngroupedName);
+                if (ugIndex >= 0) Groups.Insert(ugIndex, target);
+                else Groups.Add(target);
+            }
+            target.Tags.Add(tagName);
+
+            // Move children to same group (children cannot be in a different group)
+            foreach (var child in tagTree.GetAllChildren(tagName))
+            {
+                foreach (var g in Groups) g.Tags.Remove(child.Name);
+                target.Tags.Add(child.Name);
+            }
+
+            RefreshTagStructure();
+        }
+
+        public void AddGroup(string name)
+        {
+            if (Groups.Any(g => g.Name == name)) return;
+            var ug = Groups.FirstOrDefault(g => g.Name == UngroupedName);
+            int ugIndex = ug != null ? Groups.IndexOf(ug) : Groups.Count;
+            Groups.Insert(ugIndex, new TagGroup(name));
+            RefreshTagStructure();
+        }
+
+        public void MoveGroupUp(string name)
+        {
+            int i = Groups.FindIndex(g => g.Name == name);
+            if (i <= 0) return;
+            // Don't move above index 0, don't swap Ungrouped
+            if (Groups[i].Name == UngroupedName) return;
+            (Groups[i], Groups[i - 1]) = (Groups[i - 1], Groups[i]);
+            RefreshTagStructure();
+        }
+
+        public void MoveGroupDown(string name)
+        {
+            int i = Groups.FindIndex(g => g.Name == name);
+            if (i < 0 || i >= Groups.Count - 1) return;
+            if (Groups[i].Name == UngroupedName) return;
+            // Don't swap into Ungrouped's position (always last)
+            if (Groups[i + 1].Name == UngroupedName) return;
+            (Groups[i], Groups[i + 1]) = (Groups[i + 1], Groups[i]);
+            RefreshTagStructure();
+        }
+
+        public void RenameGroup(string oldName, string newName)
+        {
+            if (oldName == UngroupedName) return;
+            if (Groups.Any(g => g.Name == newName)) return;
+            var g = Groups.FirstOrDefault(g => g.Name == oldName);
+            if (g != null) g.Name = newName;
+            RefreshTagStructure();
+        }
 
         public Library(string name, string dirpath) 
         {
@@ -142,9 +269,14 @@ namespace Calypso
                 parentNode.Children.Add(newTag.Name);
             }
 
+            // New tag goes to parent's group, or Ungrouped
+            var parentGroup = !string.IsNullOrEmpty(newTag.Parent)
+                ? GetGroupForTag(newTag.Parent) : null;
+            var targetGroup = parentGroup ?? EnsureUngrouped();
+            targetGroup.Tags.Add(newTag.Name);
+
             tagTree.tagNodes.Add(newTag);
             tagDict[newTag.Name] = new List<ImageData>();
-            //Debug.WriteLine("tagtree length: " + TagNodeList.Count);
             RefreshTagStructure();
             return true;
         }
@@ -171,6 +303,8 @@ namespace Calypso
             {
                 tagTree.tagNodes.Remove(node);
                 tagDict.Remove(node.Name);
+                // Remove from groups
+                foreach (var g in Groups) g.Tags.Remove(node.Name);
             }
 
             // Remove tag references from images
@@ -228,6 +362,14 @@ namespace Calypso
                 {
                     child.Parent = validName;
                 }
+            }
+
+            // Update group membership
+            var grp = GetGroupForTag(oldName);
+            if (grp != null)
+            {
+                int idx = grp.Tags.IndexOf(oldName);
+                if (idx >= 0) grp.Tags[idx] = validName;
             }
 
             // Update tagDict entry

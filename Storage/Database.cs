@@ -371,6 +371,7 @@ namespace Calypso
                     Util.CreateThumbnail(lib, img.Filepath);
 
             SetAllAndUntaggedToDict();
+            lib.SyncGroupMembership();
             BackfillDHashes();
         }
 
