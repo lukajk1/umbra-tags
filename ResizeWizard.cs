@@ -1,5 +1,6 @@
 using Calypso.UI;
 using System;
+using System.IO;
 using System.Windows.Forms;
 
 namespace Calypso
@@ -118,6 +119,10 @@ namespace Calypso
                 Util.ResizeImage(_img, newW, newH);
                 DB.GenTagDictAndSaveLibrary();
                 ImageInfoPanel.Refresh();
+
+                string name    = Path.GetFileNameWithoutExtension(_img.Filename);
+                string shortName = name.Length > 20 ? name[..20] + "…" : name;
+                Toast.Show($"Resized {shortName} to {newW}×{newH}");
             }
             catch (Exception ex)
             {
