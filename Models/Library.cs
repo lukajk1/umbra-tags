@@ -36,12 +36,6 @@ namespace Calypso
                 ug = new TagGroup(UngroupedName);
                 Groups.Add(ug);
             }
-            else
-            {
-                // Keep Ungrouped last
-                Groups.Remove(ug);
-                Groups.Add(ug);
-            }
             return ug;
         }
 
@@ -62,16 +56,9 @@ namespace Calypso
             var assigned = new HashSet<string>(Groups.SelectMany(g => g.Tags));
             var unassigned = allTagNames.Where(t => !assigned.Contains(t)).ToList();
 
-            if (unassigned.Count > 0)
-            {
-                var ug = EnsureUngrouped();
-                foreach (var t in unassigned)
-                    ug.Tags.Add(t);
-            }
-            else
-            {
-                EnsureUngrouped(); // still ensure it exists and is last
-            }
+            var ungrouped = EnsureUngrouped();
+            foreach (var t in unassigned)
+                ungrouped.Tags.Add(t);
         }
 
         /// <summary>Moves a tag (and its descendants) to the target group.</summary>
@@ -105,9 +92,7 @@ namespace Calypso
         public void AddGroup(string name)
         {
             if (Groups.Any(g => g.Name == name)) return;
-            var ug = Groups.FirstOrDefault(g => g.Name == UngroupedName);
-            int ugIndex = ug != null ? Groups.IndexOf(ug) : Groups.Count;
-            Groups.Insert(ugIndex, new TagGroup(name));
+            Groups.Add(new TagGroup(name));
             RefreshTagStructure();
         }
 
@@ -115,8 +100,6 @@ namespace Calypso
         {
             int i = Groups.FindIndex(g => g.Name == name);
             if (i <= 0) return;
-            // Don't move above index 0, don't swap Ungrouped
-            if (Groups[i].Name == UngroupedName) return;
             (Groups[i], Groups[i - 1]) = (Groups[i - 1], Groups[i]);
             RefreshTagStructure();
         }
@@ -125,9 +108,6 @@ namespace Calypso
         {
             int i = Groups.FindIndex(g => g.Name == name);
             if (i < 0 || i >= Groups.Count - 1) return;
-            if (Groups[i].Name == UngroupedName) return;
-            // Don't swap into Ungrouped's position (always last)
-            if (Groups[i + 1].Name == UngroupedName) return;
             (Groups[i], Groups[i + 1]) = (Groups[i + 1], Groups[i]);
             RefreshTagStructure();
         }

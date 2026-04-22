@@ -294,8 +294,6 @@ namespace Calypso
                     {
                         case "Rename Group...":
                         case "Delete Group":
-                        case "Move Group Up":
-                        case "Move Group Down":
                             mi.Enabled = !isUngrouped;
                             break;
                     }

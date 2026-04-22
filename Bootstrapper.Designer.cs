@@ -50,6 +50,7 @@
             ClientSize = new Size(570, 221);
             Controls.Add(pictureBox1);
             FormBorderStyle = FormBorderStyle.None;
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Bootstrapper";
             Text = "Bootstrapper";
             ((System.ComponentModel.ISupportInitialize)pictureBox1).EndInit();
