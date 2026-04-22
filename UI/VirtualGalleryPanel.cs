@@ -74,6 +74,11 @@ namespace Calypso.UI
         private static Color SelectionOverlay => Theme.AccentOverlay;
         private static Color LabelForeground  => Theme.Foreground;
 
+        // ── ambient gradient ──────────────────────────────────────────────
+        private Color[]? _gradientStrip = null;   // one color per pixel column
+        private int      _gradientScrollY = -1;   // scroll position when strip was last built
+        private const float GradientOpacity = 0.2f;
+
         // ── events ────────────────────────────────────────────────────────
         public event EventHandler<GalleryItem>?        ItemDoubleClicked;
         public event EventHandler<GalleryClickEventArgs>? ItemClicked;
@@ -104,6 +109,12 @@ namespace Calypso.UI
             TabStop    = true;
         }
 
+        // Suppress default background erase so our OnPaint gradient isn't wiped first
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            // intentionally empty — OnPaint fills the background itself
+        }
+
         // ══════════════════════════════════════════════════════════════════
         //  Public API
         // ══════════════════════════════════════════════════════════════════
@@ -123,6 +134,8 @@ namespace Calypso.UI
                 _items.Add(new GalleryItem(img));
 
             _bitmaps = new Bitmap?[_items.Count];
+            _gradientStrip   = null;
+            _gradientScrollY = -1;
 
             RecalcLayout();
             UpdateScrollbar();
@@ -263,6 +276,140 @@ namespace Calypso.UI
         }
 
         // ══════════════════════════════════════════════════════════════════
+        //  Ambient gradient
+        // ══════════════════════════════════════════════════════════════════
+
+        private void RebuildGradientIfNeeded()
+        {
+            // Rebuild if scroll changed meaningfully or panel was repopulated
+            if (_gradientStrip != null && Math.Abs(_gradientScrollY - _scrollY) < _cellH / 2)
+                return;
+
+            _gradientScrollY = _scrollY;
+            int h = Math.Max(1, ClientSize.Height);
+
+            // Collect visible rows — one average color per row
+            int firstRow = Math.Max(0, (_scrollY - TilePadding) / _cellH);
+            int lastRow  = Math.Min(_rows - 1, (_scrollY + ClientSize.Height + _cellH - 1) / _cellH);
+
+            // Build list of (screenCenterY, avgColor) per tile row
+            var rowColors = new List<(float cy, Color color)>();
+            for (int row = firstRow; row <= lastRow; row++)
+            {
+                var colors = new List<Color>();
+                for (int col = 0; col < _cols; col++)
+                {
+                    int index = row * _cols + col;
+                    if (index >= _items.Count) break;
+                    string? grid = _items[index].ImageData.ColorGrid;
+                    if (grid == null) continue;
+                    colors.Add(ColorGrid.AverageColor(grid));
+                }
+                if (colors.Count == 0) continue;
+
+                // screen Y center of this tile row
+                int tileY = TilePadding + row * _cellH - _scrollY;
+                float cy = tileY + _tileSize / 2f;
+
+                int r = 0, gg = 0, b = 0;
+                foreach (var c in colors) { r += c.R; gg += c.G; b += c.B; }
+                rowColors.Add((cy, Color.FromArgb(r / colors.Count, gg / colors.Count, b / colors.Count)));
+            }
+
+            if (rowColors.Count == 0)
+            {
+                _gradientStrip = null;
+                return;
+            }
+
+            rowColors.Sort((a, b) => a.cy.CompareTo(b.cy));
+
+            // Sample: for each pixel row, interpolate between nearest row centers
+            var raw = new Color[h];
+            for (int py = 0; py < h; py++)
+            {
+                int li = 0, ri = rowColors.Count - 1;
+                for (int k = 0; k < rowColors.Count; k++)
+                {
+                    if (rowColors[k].cy <= py) li = k;
+                    if (rowColors[k].cy >= py) { ri = k; break; }
+                }
+
+                Color ca = rowColors[li].color;
+                Color cb = rowColors[ri].color;
+                float t  = rowColors[li].cy == rowColors[ri].cy ? 0f
+                    : Math.Clamp((py - rowColors[li].cy) / (rowColors[ri].cy - rowColors[li].cy), 0f, 1f);
+
+                raw[py] = BlendColors(ca, cb, t);
+            }
+
+            // Box blur vertically (3 passes)
+            int blurRadius = Math.Max(8, h / 12);
+            for (int pass = 0; pass < 3; pass++)
+                raw = BoxBlur(raw, blurRadius);
+
+            // Blend with background at GradientOpacity
+            var bg = Theme.Background;
+            _gradientStrip = new Color[h];
+            for (int py = 0; py < h; py++)
+                _gradientStrip[py] = BlendColors(bg, raw[py], GradientOpacity);
+        }
+
+        private void DrawGradient(Graphics g)
+        {
+            if (_gradientStrip == null || _gradientStrip.Length < 2) return;
+
+            int w = ClientSize.Width;
+            int h = ClientSize.Height;
+
+            int step = Math.Max(1, h / 64); // at most 64 horizontal bands
+            for (int py = 0; py < h; py += step)
+            {
+                int segH     = Math.Min(step, h - py);
+                int idxTop   = Math.Clamp(py,        0, _gradientStrip.Length - 1);
+                int idxBot   = Math.Clamp(py + segH, 0, _gradientStrip.Length - 1);
+
+                using var brush = new LinearGradientBrush(
+                    new Rectangle(0, py, w, segH + 1),
+                    _gradientStrip[idxTop],
+                    _gradientStrip[idxBot],
+                    LinearGradientMode.Vertical);
+                g.FillRectangle(brush, 0, py, w, segH);
+            }
+        }
+
+        private static Color AverageColorArray(Color[] cols)
+        {
+            int r = 0, g = 0, b = 0;
+            foreach (var c in cols) { r += c.R; g += c.G; b += c.B; }
+            return Color.FromArgb(r / cols.Length, g / cols.Length, b / cols.Length);
+        }
+
+        private static Color BlendColors(Color a, Color b, float t)
+        {
+            return Color.FromArgb(
+                (int)(a.R + (b.R - a.R) * t),
+                (int)(a.G + (b.G - a.G) * t),
+                (int)(a.B + (b.B - a.B) * t));
+        }
+
+        private static Color[] BoxBlur(Color[] src, int radius)
+        {
+            int len = src.Length;
+            var dst = new Color[len];
+            for (int i = 0; i < len; i++)
+            {
+                int lo = Math.Max(0, i - radius);
+                int hi = Math.Min(len - 1, i + radius);
+                int count = hi - lo + 1;
+                int r = 0, g2 = 0, b = 0;
+                for (int j = lo; j <= hi; j++) { r += src[j].R; g2 += src[j].G; b += src[j].B; }
+                dst[i] = Color.FromArgb(r / count, g2 / count, b / count);
+            }
+            return dst;
+        }
+
+        // ══════════════════════════════════════════════════════════════════
         //  Painting
         // ══════════════════════════════════════════════════════════════════
 
@@ -270,6 +417,13 @@ namespace Calypso.UI
         {
             var g = e.Graphics;
             g.InterpolationMode = InterpolationMode.Bilinear;
+
+            // ── background fill (always, since OnPaintBackground is suppressed) ──
+            g.Clear(Theme.Background);
+
+            // ── ambient gradient background ───────────────────────────────
+            RebuildGradientIfNeeded();
+            DrawGradient(g);
 
             int firstRow = Math.Max(0, (_scrollY - TilePadding) / _cellH);
             int lastRow  = Math.Min(_rows - 1, (_scrollY + ClientSize.Height + _cellH - 1) / _cellH);

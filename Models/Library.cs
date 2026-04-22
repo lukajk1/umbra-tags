@@ -127,6 +127,14 @@ namespace Calypso
             Dirpath = dirpath;
         }
 
+        public void SetGroupColor(string groupName, Color color)
+        {
+            var g = Groups.FirstOrDefault(g => g.Name == groupName);
+            if (g == null) return;
+            g.GroupColor = color == Color.Empty ? 0 : color.ToArgb();
+            RefreshTagStructure();
+        }
+
         /// <summary>
         /// Moves all tags from <paramref name="sourceName"/> into <paramref name="targetName"/>
         /// and removes the source group.

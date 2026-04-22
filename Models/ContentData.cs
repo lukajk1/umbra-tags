@@ -30,6 +30,12 @@ namespace Calypso
         public ulong DHash { get; set; }
         public bool IsArchived { get; set; } = false;
 
+        /// <summary>
+        /// 4x4 color grid stored as base64-encoded RGB bytes (48 bytes → 64 chars).
+        /// Row-major, top-left to bottom-right. Null means not yet computed.
+        /// </summary>
+        public string? ColorGrid { get; set; } = null;
+
         public bool IsVideo => Util.IsVideoExtension(Path.GetExtension(Filepath));
 
         public ImageData(string filepath, string thumbnailPath)

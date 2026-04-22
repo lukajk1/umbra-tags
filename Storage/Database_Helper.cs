@@ -144,6 +144,22 @@ namespace Calypso
             }
         }
 
+        private static void BackfillColorGrids()
+        {
+            foreach (var img in ActiveLibrary.filenameDict.Values)
+            {
+                if (img.ColorGrid != null) continue;
+                if (img.IsVideo) continue;
+                if (!File.Exists(img.ThumbnailPath)) continue;
+                try
+                {
+                    using var bmp = new System.Drawing.Bitmap(img.ThumbnailPath);
+                    img.ColorGrid = ColorGrid.Compute(bmp);
+                }
+                catch { }
+            }
+        }
+
         #region miscellaneous helpers
         public static void DeleteImageData(List<ImageData> imgDataList)
         {
@@ -256,7 +272,18 @@ namespace Calypso
                 string thumbPath = Util.CreateThumbnail(lib, destPath);
                 if (string.IsNullOrEmpty(thumbPath)) continue;
 
-                var imgData = new ImageData(destPath, thumbPath) { DHash = incomingHash };
+                string? colorGrid = null;
+                if (!isVideo && !string.IsNullOrEmpty(thumbPath))
+                {
+                    try
+                    {
+                        using var bmp = new System.Drawing.Bitmap(thumbPath);
+                        colorGrid = ColorGrid.Compute(bmp);
+                    }
+                    catch { }
+                }
+
+                var imgData = new ImageData(destPath, thumbPath) { DHash = incomingHash, ColorGrid = colorGrid };
                 lib.filenameDict[destPath] = imgData;
                 added.Add(imgData);
             }

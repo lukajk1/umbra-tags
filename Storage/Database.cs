@@ -373,6 +373,7 @@ namespace Calypso
             SetAllAndUntaggedToDict();
             lib.SyncGroupMembership();
             BackfillDHashes();
+            BackfillColorGrids();
         }
 
         private static void AddNewEntriesToFilenameDict(string[] newImageFilepaths)

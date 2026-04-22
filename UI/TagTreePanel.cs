@@ -26,6 +26,22 @@ namespace Calypso
         private ToolStripMenuItem moveToGroupItem;
         private ToolStripSeparator groupSep;
 
+        // predefined group color palette — (label, color)
+        private static readonly (string Label, Color Color)[] GroupColorPalette =
+        {
+            ("None",   Color.Empty),
+            ("Red",    Color.FromArgb(220,  80,  80)),
+            ("Orange", Color.FromArgb(220, 140,  50)),
+            ("Yellow", Color.FromArgb(210, 200,  60)),
+            ("Green",  Color.FromArgb( 80, 180,  80)),
+            ("Teal",   Color.FromArgb( 60, 180, 170)),
+            ("Blue",   Color.FromArgb( 80, 140, 220)),
+            ("Purple", Color.FromArgb(150,  80, 220)),
+            ("Pink",   Color.FromArgb(220, 100, 160)),
+            ("White",  Color.FromArgb(220, 220, 220)),
+            ("Gray",   Color.FromArgb(130, 130, 130)),
+        };
+
         // group header context menu (separate)
         private ContextMenuStrip groupContextMenu;
 
@@ -79,6 +95,7 @@ namespace Calypso
 
             var newGroupItem    = new ToolStripMenuItem("New Group...");
             var renameGroupItem = new ToolStripMenuItem("Rename Group...");
+            var setColorItem    = new ToolStripMenuItem("Set Color") { Name = "setColorToolStripMenuItem" };
             var deleteGroupItem = new ToolStripMenuItem("Delete Group");
             var mergeIntoItem   = new ToolStripMenuItem("Merge into") { Name = "mergeIntoToolStripMenuItem" };
             var moveUpItem      = new ToolStripMenuItem("Move Group Up");
@@ -90,11 +107,15 @@ namespace Calypso
             moveUpItem.Click      += (s, e) => MoveSelectedGroupUp();
             moveDownItem.Click    += (s, e) => MoveSelectedGroupDown();
 
+            // populate color submenu once
+            BuildColorSubmenu(setColorItem);
+
             groupContextMenu.Items.AddRange(new ToolStripItem[]
             {
                 newGroupItem,
                 new ToolStripSeparator(),
                 renameGroupItem,
+                setColorItem,
                 mergeIntoItem,
                 deleteGroupItem,
                 new ToolStripSeparator(),
@@ -144,10 +165,14 @@ namespace Calypso
             {
                 foreach (var group in lib.Groups)
                 {
+                    Color groupColor = group.GroupColor != 0
+                        ? Color.FromArgb(group.GroupColor)
+                        : Color.FromArgb(180, 180, 180);
+
                     var groupNode = new TreeNode(group.Name)
                     {
                         Tag       = new GroupNodeTag(group),
-                        ForeColor = Color.FromArgb(180, 180, 180),
+                        ForeColor = groupColor,
                         NodeFont  = new Font(tagTree.Font, FontStyle.Bold),
                     };
 
@@ -353,6 +378,25 @@ namespace Calypso
             }
         }
 
+        // ── color submenu ─────────────────────────────────────────────────
+
+        private void BuildColorSubmenu(ToolStripMenuItem parent)
+        {
+            parent.DropDownItems.Clear();
+
+            foreach (var (label, color) in GroupColorPalette)
+            {
+                Color captured = color;
+                var item = new ColorSwatchMenuItem(label, color);
+                item.Click += (s, e) =>
+                {
+                    if (selectedNode?.Tag is GroupNodeTag gnt)
+                        DB.ActiveLibrary?.SetGroupColor(gnt.Group.Name, captured);
+                };
+                parent.DropDownItems.Add(item);
+            }
+        }
+
         // ── group actions ─────────────────────────────────────────────────
 
         private void NewGroup()
@@ -460,6 +504,57 @@ namespace Calypso
                     DB.ActiveLibrary.AddTagToTree(newTag);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// A ToolStripMenuItem that draws a colored square swatch next to its label.
+    /// </summary>
+    internal sealed class ColorSwatchMenuItem : ToolStripMenuItem
+    {
+        private readonly Color _swatch;
+        private const int SwatchSize   = 13;
+        private const int SwatchMargin = 6;
+
+        public ColorSwatchMenuItem(string label, Color swatch) : base(label)
+        {
+            _swatch = swatch;
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g      = e.Graphics;
+            var bounds = new Rectangle(Point.Empty, Size);
+
+            bool selected = Selected;
+            Color bg = selected ? Theme.SurfaceRaised : Theme.Surface;
+            g.FillRectangle(new SolidBrush(bg), bounds);
+
+            int swatchY   = (bounds.Height - SwatchSize) / 2;
+            var swatchRect = new Rectangle(SwatchMargin, swatchY, SwatchSize, SwatchSize);
+
+            if (_swatch != Color.Empty)
+            {
+                g.FillRectangle(new SolidBrush(_swatch), swatchRect);
+                g.DrawRectangle(new Pen(Theme.Border), swatchRect);
+            }
+            else
+            {
+                g.DrawRectangle(new Pen(Theme.Border), swatchRect);
+                g.DrawLine(new Pen(Theme.ForegroundDim), swatchRect.Left, swatchRect.Top,  swatchRect.Right,  swatchRect.Bottom);
+                g.DrawLine(new Pen(Theme.ForegroundDim), swatchRect.Right, swatchRect.Top, swatchRect.Left, swatchRect.Bottom);
+            }
+
+            int textX = swatchRect.Right + SwatchMargin;
+            using var brush = new SolidBrush(Theme.Foreground);
+            g.DrawString(Text, Font, brush,
+                new RectangleF(textX, 0, bounds.Width - textX, bounds.Height),
+                new StringFormat { LineAlignment = StringAlignment.Center });
+        }
+
+        public override Size GetPreferredSize(Size constrainingSize)
+        {
+            return new Size(130, 22);
         }
     }
 }
