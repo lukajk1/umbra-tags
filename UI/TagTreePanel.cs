@@ -80,6 +80,7 @@ namespace Calypso
             var newGroupItem    = new ToolStripMenuItem("New Group...");
             var renameGroupItem = new ToolStripMenuItem("Rename Group...");
             var deleteGroupItem = new ToolStripMenuItem("Delete Group");
+            var mergeIntoItem   = new ToolStripMenuItem("Merge into") { Name = "mergeIntoToolStripMenuItem" };
             var moveUpItem      = new ToolStripMenuItem("Move Group Up");
             var moveDownItem    = new ToolStripMenuItem("Move Group Down");
 
@@ -94,6 +95,7 @@ namespace Calypso
                 newGroupItem,
                 new ToolStripSeparator(),
                 renameGroupItem,
+                mergeIntoItem,
                 deleteGroupItem,
                 new ToolStripSeparator(),
                 moveUpItem,
@@ -323,6 +325,30 @@ namespace Calypso
                             mi.Enabled = !isUngrouped;
                             break;
                     }
+                }
+            }
+
+            // Build "Merge into" submenu — all groups except the selected one
+            var mergeItem = groupContextMenu.Items
+                .OfType<ToolStripMenuItem>()
+                .FirstOrDefault(i => i.Name == "mergeIntoToolStripMenuItem");
+            if (mergeItem != null)
+            {
+                mergeItem.DropDownItems.Clear();
+                var others = lib.Groups.Where(g => g.Name != name).ToList();
+                mergeItem.Enabled = others.Count > 0;
+                foreach (var group in others)
+                {
+                    string targetName = group.Name;
+                    var entry = new ToolStripMenuItem(targetName);
+                    entry.BackColor = Theme.Surface;
+                    entry.ForeColor = Theme.Foreground;
+                    entry.Click += (s, e) =>
+                    {
+                        if (Util.ShowConfirmDialog($"Merge \"{name}\" into \"{targetName}\"? All tags will be moved and \"{name}\" will be removed.") == DialogResult.OK)
+                            lib.MergeGroup(name, targetName);
+                    };
+                    mergeItem.DropDownItems.Add(entry);
                 }
             }
         }

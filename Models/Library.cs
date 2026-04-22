@@ -15,7 +15,7 @@ namespace Calypso
         public Dictionary<string, ImageData> filenameDict { get; set; } = new();
         public List<TagGroup> Groups { get; set; } = new();
 
-        public const string UngroupedName = "Ungrouped";
+        public const string UngroupedName = "Default Group";
 
         // ── group helpers ─────────────────────────────────────────────────
 
@@ -125,6 +125,25 @@ namespace Calypso
         {
             Name = name;
             Dirpath = dirpath;
+        }
+
+        /// <summary>
+        /// Moves all tags from <paramref name="sourceName"/> into <paramref name="targetName"/>
+        /// and removes the source group.
+        /// </summary>
+        public void MergeGroup(string sourceName, string targetName)
+        {
+            if (sourceName == targetName) return;
+            var source = Groups.FirstOrDefault(g => g.Name == sourceName);
+            var target = Groups.FirstOrDefault(g => g.Name == targetName);
+            if (source == null || target == null) return;
+
+            foreach (var tag in source.Tags)
+                if (!target.Tags.Contains(tag))
+                    target.Tags.Add(tag);
+
+            Groups.Remove(source);
+            RefreshTagStructure();
         }
 
         public void RefreshTagStructure()
