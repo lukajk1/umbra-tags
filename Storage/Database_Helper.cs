@@ -23,6 +23,8 @@ namespace Calypso
             "all", "untagged", "archived", "randimg", "allvideos", "randtag"
         };
 
+        private const string GroupPrefix = "g:";
+
         #region searching
         public static void Search(string searchTextRaw, bool randomize, int upperLimit)
         {
@@ -65,6 +67,27 @@ namespace Calypso
             {
                 results = ActiveLibrary.filenameDict.Values
                     .Where(img => !img.IsArchived && img.IsVideo).ToList();
+            }
+            else if (stripped.StartsWith(GroupPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                string groupName = stripped.Substring(GroupPrefix.Length);
+                var group = ActiveLibrary.Groups
+                    .FirstOrDefault(g => string.Equals(g.Name, groupName, StringComparison.OrdinalIgnoreCase));
+
+                if (group != null)
+                {
+                    foreach (string tagName in group.Tags)
+                    {
+                        if (ActiveLibrary.tagDict.TryGetValue(tagName, out var imgs))
+                            results.AddRange(imgs);
+
+                        // include children of each tag in the group
+                        foreach (var child in ActiveLibrary.tagTree.GetAllChildren(tagName))
+                            if (ActiveLibrary.tagDict.TryGetValue(child.Name, out var childImgs))
+                                results.AddRange(childImgs);
+                    }
+                    results = results.Distinct().Where(img => !img.IsArchived).ToList();
+                }
             }
             else
             {

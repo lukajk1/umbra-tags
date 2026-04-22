@@ -194,6 +194,10 @@ namespace Calypso
                 {
                     Searchbar.Search(tagNode.Name);
                 }
+                else if (selectedNode.Tag is GroupNodeTag gnt)
+                {
+                    Searchbar.Search($"g:{gnt.Group.Name}");
+                }
                 else if (selectedNode.Tag is string value)
                 {
                     Searchbar.Search(value);
