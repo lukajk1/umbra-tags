@@ -54,18 +54,19 @@ namespace Calypso.UI
         {
             CurrentMode = mode;
 
-            bool dark = mode == ThemeMode.Dark ||
-                        (mode == ThemeMode.System && SystemPrefersDark());
-
-            if (dark) Theme.ApplyDark();
-            else      Theme.ApplyLight();
+            // Always dark for now. Light/System preserved for future re-enabling.
+            // bool dark = mode == ThemeMode.Dark ||
+            //             (mode == ThemeMode.System && SystemPrefersDark());
+            // if (dark) Theme.ApplyDark();
+            // else      Theme.ApplyLight();
+            Theme.ApplyDark();
 
             foreach (Form f in Application.OpenForms)
             {
                 Apply(f);
                 f.BackColor = Theme.Background;
                 f.ForeColor = Theme.Foreground;
-                SetImmersiveDarkMode(f.Handle, dark);
+                SetImmersiveDarkMode(f.Handle, Theme.IsDark);
                 f.Invalidate(true);
             }
 
@@ -199,28 +200,40 @@ namespace Calypso.UI
         }
 
         // ── system theme detection ────────────────────────────────────────
+        // Preserved for future light/system theme support.
 
-        private static bool SystemPrefersDark()
-        {
-            try
-            {
-                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
-                    @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-                return (int)(key?.GetValue("AppsUseLightTheme") ?? 1) == 0;
-            }
-            catch { return false; }
-        }
+        // private static bool SystemPrefersDark()
+        // {
+        //     try
+        //     {
+        //         using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+        //             @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+        //         return (int)(key?.GetValue("AppsUseLightTheme") ?? 1) == 0;
+        //     }
+        //     catch { return false; }
+        // }
 
         // ── DWM dark mode for title bar + scrollbars ──────────────────────
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        private const int DWMWA_BORDER_COLOR            = 34;
+        private const int DWMWA_CAPTION_COLOR           = 35;
+
+        // COLORREF is BGR, not RGB
+        private static int ToBGR(Color c) => c.B << 16 | c.G << 8 | c.R;
 
         internal static void SetImmersiveDarkMode(IntPtr hwnd, bool dark)
         {
             int value = dark ? 1 : 0;
             DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref value, sizeof(int));
+
+            int borderColor = ToBGR(Theme.Border);
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderColor, sizeof(int));
+
+            int captionColor = ToBGR(Theme.Surface);
+            DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref captionColor, sizeof(int));
         }
 
         [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]

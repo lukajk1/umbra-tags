@@ -83,48 +83,48 @@ namespace Calypso
 
         private void AddThemeMenu()
         {
-            var themeMenu = new ToolStripMenuItem("Theme");
+            // Theme switching menu removed from UI — app is always dark.
+            // Preserved below for future re-enabling if needed.
+            //
+            // var themeMenu = new ToolStripMenuItem("Theme");
+            // var darkItem   = new ToolStripMenuItem("Dark")   { Name = "themeItemDark" };
+            // var lightItem  = new ToolStripMenuItem("Light")  { Name = "themeItemLight" };
+            // var systemItem = new ToolStripMenuItem("System") { Name = "themeItemSystem" };
+            // darkItem.Click   += (_, _) => SetTheme(ThemeMode.Dark);
+            // lightItem.Click  += (_, _) => SetTheme(ThemeMode.Light);
+            // systemItem.Click += (_, _) => SetTheme(ThemeMode.System);
+            // themeMenu.DropDownItems.AddRange(new ToolStripItem[] { darkItem, lightItem, systemItem });
+            // viewToolStripMenuItem.DropDownItems.Add(new ToolStripSeparator());
+            // viewToolStripMenuItem.DropDownItems.Add(themeMenu);
+            // UpdateThemeCheckmarks();
 
-            var darkItem   = new ToolStripMenuItem("Dark")   { Name = "themeItemDark" };
-            var lightItem  = new ToolStripMenuItem("Light")  { Name = "themeItemLight" };
-            var systemItem = new ToolStripMenuItem("System") { Name = "themeItemSystem" };
-
-            darkItem.Click   += (_, _) => SetTheme(ThemeMode.Dark);
-            lightItem.Click  += (_, _) => SetTheme(ThemeMode.Light);
-            systemItem.Click += (_, _) => SetTheme(ThemeMode.System);
-
-            themeMenu.DropDownItems.AddRange(new ToolStripItem[] { darkItem, lightItem, systemItem });
-            viewToolStripMenuItem.DropDownItems.Add(new ToolStripSeparator());
-            viewToolStripMenuItem.DropDownItems.Add(themeMenu);
-
-            UpdateThemeCheckmarks();
             Calypso.UI.ThemeManager.Apply(menuStrip1);
         }
 
-        private void SetTheme(ThemeMode mode)
-        {
-            ThemeManager.SetTheme(mode);
-            UpdateThemeCheckmarks();
-        }
+        // private void SetTheme(ThemeMode mode)
+        // {
+        //     ThemeManager.SetTheme(mode);
+        //     UpdateThemeCheckmarks();
+        // }
 
-        private void UpdateThemeCheckmarks()
-        {
-            foreach (ToolStripItem item in viewToolStripMenuItem.DropDownItems)
-            {
-                if (item is not ToolStripMenuItem sub || sub.Text != "Theme") continue;
-                foreach (ToolStripItem child in sub.DropDownItems)
-                {
-                    if (child is ToolStripMenuItem mi)
-                        mi.Checked = mi.Name switch
-                        {
-                            "themeItemDark"   => ThemeManager.CurrentMode == ThemeMode.Dark,
-                            "themeItemLight"  => ThemeManager.CurrentMode == ThemeMode.Light,
-                            "themeItemSystem" => ThemeManager.CurrentMode == ThemeMode.System,
-                            _                 => false
-                        };
-                }
-            }
-        }
+        // private void UpdateThemeCheckmarks()
+        // {
+        //     foreach (ToolStripItem item in viewToolStripMenuItem.DropDownItems)
+        //     {
+        //         if (item is not ToolStripMenuItem sub || sub.Text != "Theme") continue;
+        //         foreach (ToolStripItem child in sub.DropDownItems)
+        //         {
+        //             if (child is ToolStripMenuItem mi)
+        //                 mi.Checked = mi.Name switch
+        //                 {
+        //                     "themeItemDark"   => ThemeManager.CurrentMode == ThemeMode.Dark,
+        //                     "themeItemLight"  => ThemeManager.CurrentMode == ThemeMode.Light,
+        //                     "themeItemSystem" => ThemeManager.CurrentMode == ThemeMode.System,
+        //                     _                 => false
+        //                 };
+        //         }
+        //     }
+        // }
 
         public void UpdateTitle(string libraryName)
         {
