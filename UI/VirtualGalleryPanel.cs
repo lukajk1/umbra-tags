@@ -70,8 +70,8 @@ namespace Calypso.UI
         private HashSet<int> _preBoxSelection = new();
 
         // ── colors ────────────────────────────────────────────────────────
-        private static Color SelectionColor   => Theme.Accent;
-        private static Color SelectionOverlay => Theme.AccentOverlay;
+        private static Color SelectionColor   => Color.FromArgb(191, 191, 191);
+        private static Color SelectionOverlay => Color.FromArgb(40, 255, 255, 255);
         private static Color LabelForeground  => Theme.Foreground;
 
         // ── ambient gradient ──────────────────────────────────────────────
@@ -445,9 +445,9 @@ namespace Calypso.UI
                 var r = GetBoxRect();
                 if (r.Width > 2 && r.Height > 2)
                 {
-                    using var fillBrush = new SolidBrush(Color.FromArgb(50, Theme.Accent));
+                    using var fillBrush = new SolidBrush(Color.FromArgb(40, 191, 191, 191));
                     g.FillRectangle(fillBrush, r);
-                    using var borderPen = new Pen(Theme.Accent, 1);
+                    using var borderPen = new Pen(Color.FromArgb(191, 191, 191), 1);
                     g.DrawRectangle(borderPen, r.X, r.Y, r.Width - 1, r.Height - 1);
                 }
             }
