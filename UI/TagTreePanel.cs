@@ -336,6 +336,13 @@ namespace Calypso
             if (lib == null) return;
 
             string groupName = gnt.Group.Name;
+
+            int tagCount = gnt.Group.Tags.Count;
+            string detail = tagCount > 0
+                ? $" Its {tagCount} tag(s) will be moved to Ungrouped."
+                : string.Empty;
+            if (Util.ShowConfirmDialog($"Delete group \"{groupName}\"?{detail}") != DialogResult.OK)
+                return;
             var group = lib.Groups.FirstOrDefault(g => g.Name == groupName);
             if (group == null) return;
 
