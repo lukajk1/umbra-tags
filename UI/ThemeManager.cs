@@ -121,7 +121,7 @@ namespace Calypso.UI
                     break;
 
                 case TreeView tv:
-                    tv.BackColor   = Theme.Surface;
+                    tv.BackColor   = Theme.Background;
                     tv.ForeColor   = Theme.Foreground;
                     tv.BorderStyle = BorderStyle.None;
                     if (tv.IsHandleCreated) ApplyScrollbarTheme(tv.Handle);

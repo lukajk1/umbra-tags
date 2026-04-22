@@ -77,7 +77,7 @@ namespace Calypso.UI
         // ── ambient gradient ──────────────────────────────────────────────
         private Color[]? _gradientStrip = null;   // one color per pixel column
         private int      _gradientScrollY = -1;   // scroll position when strip was last built
-        private const float GradientOpacity = 0.2f;
+        private const float GradientOpacity = 0.15f;
 
         // ── events ────────────────────────────────────────────────────────
         public event EventHandler<GalleryItem>?        ItemDoubleClicked;
