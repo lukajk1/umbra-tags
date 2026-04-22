@@ -226,6 +226,48 @@ namespace Calypso
             };
         }
 
+        /// <summary>
+        /// Resizes an image file in-place to the given dimensions.
+        /// Regenerates thumbnail, DHash, and ColorGrid on the ImageData afterward.
+        /// </summary>
+        public static void ResizeImage(ImageData img, int newW, int newH)
+        {
+            string path = img.Filepath;
+            if (!File.Exists(path)) return;
+
+            // Render at new size
+            using var src  = LoadImage(path);
+            using var dest = new Bitmap(newW, newH);
+            using (var g = Graphics.FromImage(dest))
+            {
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.PixelOffsetMode   = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                g.DrawImage(src, 0, 0, newW, newH);
+            }
+
+            // Overwrite original
+            var format = GetImageFormatFromExtension(path);
+            dest.Save(path, format);
+
+            // Regenerate thumbnail
+            if (File.Exists(img.ThumbnailPath))
+                File.Delete(img.ThumbnailPath);
+            CreateThumbnail(DB.ActiveLibrary, path);
+
+            // Update DHash and ColorGrid
+            img.DHash = DHash.Compute(dest);
+
+            if (File.Exists(img.ThumbnailPath))
+            {
+                try
+                {
+                    using var thumb = new Bitmap(img.ThumbnailPath);
+                    img.ColorGrid = ColorGrid.Compute(thumb);
+                }
+                catch { }
+            }
+        }
+
         public static void CopyImageFilesToLibraryDir(string[] filepaths)
         {
             foreach (string filepath in filepaths)

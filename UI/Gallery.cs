@@ -13,6 +13,7 @@ namespace Calypso
         // ── refs ──────────────────────────────────────────────────────────
         static VirtualGalleryPanel? panel;
         static ContextMenuStrip?    imageContextMenuStrip;
+        static ToolStripMenuItem?   resizeMenuItem;
         static MainWindow?          mainW;
         static ToolStripStatusLabel? selectedCountLabel;
         static ToolStripStatusLabel? resultsCountLabel;
@@ -68,6 +69,8 @@ namespace Calypso
             editTagsItem.Click  += (s, e) => OpenTagEditorByCommand();
             var showInFolderItem     = new ToolStripMenuItem("Show in Folder");
             showInFolderItem.Click  += (s, e) => OpenSelectedInExplorer();
+            resizeMenuItem           = new ToolStripMenuItem("Resize...");
+            resizeMenuItem.Click    += (s, e) => OpenResizeWizard();
             var archiveItem     = new ToolStripMenuItem("Archive");
             archiveItem.Click  += (s, e) => ArchiveSelected();
             var deleteItem     = new ToolStripMenuItem("Delete");
@@ -75,7 +78,7 @@ namespace Calypso
 
             imageContextMenuStrip = new ContextMenuStrip();
             imageContextMenuStrip.Items.AddRange(new ToolStripItem[]
-                { editTagsItem, showInFolderItem, new ToolStripSeparator(), archiveItem, deleteItem });
+                { editTagsItem, showInFolderItem, resizeMenuItem, new ToolStripSeparator(), archiveItem, deleteItem });
             ThemeManager.ApplyContextMenu(imageContextMenuStrip);
 
             panel.ShowLabels  = PreferencesManager.Prefs.ShowFilenames;
@@ -164,6 +167,15 @@ namespace Calypso
             }
         }
 
+        public static void OpenResizeWizard()
+        {
+            var items = panel?.GetSelectedItems();
+            if (items?.Count != 1) return;
+            var img = items[0].ImageData;
+            if (img.IsVideo) return;
+            new ResizeWizard(img).ShowDialog(MainWindow.i);
+        }
+
         public static void OpenSelectedInExplorer()
         {
             var items = panel?.GetSelectedItems();
@@ -213,7 +225,11 @@ namespace Calypso
                 if (PreferencesManager.Prefs.RightClickBehavior == RightClickBehavior.TagEditor)
                     OpenTagEditorByCommand();
                 else
+                {
+                    if (resizeMenuItem != null)
+                        resizeMenuItem.Visible = panel!.GetSelectedItems().Count == 1;
                     imageContextMenuStrip?.Show(panel!, e.Location);
+                }
             }
         }
 
