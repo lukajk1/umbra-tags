@@ -19,6 +19,7 @@ namespace Calypso
 
         // internal use
         private TreeNode? selectedNode = null;
+        private bool _suppressNextGroupClick = false;
 
         // context menu items added dynamically
         private ToolStripMenuItem pinItem;
@@ -35,7 +36,27 @@ namespace Calypso
             tagTree = mainW.tagTree;
             tagTree.BeforeCollapse += (s, e) =>
             {
-                e.Cancel = true;
+                if (e.Node.Tag is not GroupNodeTag)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+                if (e.Action != TreeViewAction.Collapse)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+                _suppressNextGroupClick = true;
+            };
+            tagTree.BeforeExpand += (s, e) =>
+            {
+                if (e.Node.Tag is not GroupNodeTag) return;
+                if (e.Action != TreeViewAction.Expand)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+                _suppressNextGroupClick = true;
             };
 
             // ── tag node context menu additions ───────────────────────────
@@ -196,6 +217,11 @@ namespace Calypso
                 }
                 else if (selectedNode.Tag is GroupNodeTag gnt)
                 {
+                    if (_suppressNextGroupClick)
+                    {
+                        _suppressNextGroupClick = false;
+                        return;
+                    }
                     Searchbar.Search($"g:{gnt.Group.Name}");
                 }
                 else if (selectedNode.Tag is string value)
