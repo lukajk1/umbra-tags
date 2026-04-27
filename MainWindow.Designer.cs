@@ -40,6 +40,8 @@
             toolStripMenuItem9 = new ToolStripMenuItem();
             toolStripMenuItem7 = new ToolStripMenuItem();
             toolStripMenuItem1 = new ToolStripMenuItem();
+            syncLibraryToolStripMenuItem = new ToolStripMenuItem();
+            exportTagsToCSV = new ToolStripMenuItem();
             exitToolStripMenuItem = new ToolStripMenuItem();
             editToolStripMenuItem = new ToolStripMenuItem();
             toolStripMenuItem11 = new ToolStripMenuItem();
@@ -77,7 +79,6 @@
             pictureBoxImagePreview = new PictureBox();
             middleFillPanelContainer = new Panel();
             tagTreeGallerySplitContainer = new SplitContainer();
-            addTagButton = new Button();
             horizontalLeftSplitContainer = new SplitContainer();
             imageInfoHorizontalSplitContainer = new SplitContainer();
             imageMetadataPanel = new Panel();
@@ -87,8 +88,6 @@
             removeTagToolStripMenuItem = new ToolStripMenuItem();
             addChildTagToolStripMenuItem = new ToolStripMenuItem();
             deleteToolStripMenuItem = new ToolStripMenuItem();
-            exportTagsToCSV = new ToolStripMenuItem();
-            syncLibraryToolStripMenuItem = new ToolStripMenuItem();
             menuStrip1.SuspendLayout();
             statusStrip1.SuspendLayout();
             searchPanel.SuspendLayout();
@@ -186,15 +185,22 @@
             toolStripMenuItem1.Click += toolStripMenuItem1_Click_1;
             // 
             // syncLibraryToolStripMenuItem
-            //
+            // 
             syncLibraryToolStripMenuItem.Name = "syncLibraryToolStripMenuItem";
             syncLibraryToolStripMenuItem.ShortcutKeyDisplayString = "F5";
             syncLibraryToolStripMenuItem.Size = new Size(288, 22);
             syncLibraryToolStripMenuItem.Text = "&Refresh Library";
             syncLibraryToolStripMenuItem.Click += syncLibraryToolStripMenuItem_Click;
-            //
+            // 
+            // exportTagsToCSV
+            // 
+            exportTagsToCSV.Name = "exportTagsToCSV";
+            exportTagsToCSV.Size = new Size(288, 22);
+            exportTagsToCSV.Text = "Export Tags to CSV";
+            exportTagsToCSV.Click += exportTagsToCSV_Click;
+            // 
             // exitToolStripMenuItem
-            //
+            // 
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
             exitToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl + Q";
             exitToolStripMenuItem.Size = new Size(288, 22);
@@ -407,7 +413,7 @@
             tagTree.Dock = DockStyle.Fill;
             tagTree.Location = new Point(0, 0);
             tagTree.Name = "tagTree";
-            tagTree.Size = new Size(293, 792);
+            tagTree.Size = new Size(293, 815);
             tagTree.TabIndex = 10;
             // 
             // searchPanel
@@ -507,7 +513,6 @@
             // tagTreeGallerySplitContainer.Panel1
             // 
             tagTreeGallerySplitContainer.Panel1.Controls.Add(tagTree);
-            tagTreeGallerySplitContainer.Panel1.Controls.Add(addTagButton);
             tagTreeGallerySplitContainer.Panel1.Controls.Add(horizontalLeftSplitContainer);
             // 
             // tagTreeGallerySplitContainer.Panel2
@@ -517,17 +522,6 @@
             tagTreeGallerySplitContainer.SplitterDistance = 293;
             tagTreeGallerySplitContainer.SplitterWidth = 7;
             tagTreeGallerySplitContainer.TabIndex = 17;
-            // 
-            // addTagButton
-            // 
-            addTagButton.Dock = DockStyle.Bottom;
-            addTagButton.Location = new Point(0, 792);
-            addTagButton.Name = "addTagButton";
-            addTagButton.Size = new Size(293, 23);
-            addTagButton.TabIndex = 11;
-            addTagButton.Text = "+";
-            addTagButton.UseVisualStyleBackColor = true;
-            addTagButton.Click += addTagButton_Click;
             // 
             // horizontalLeftSplitContainer
             // 
@@ -624,13 +618,6 @@
             deleteToolStripMenuItem.Text = "Delete";
             deleteToolStripMenuItem.Click += deleteToolStripMenuItem_Click;
             // 
-            // exportTagsToCSV
-            // 
-            exportTagsToCSV.Name = "exportTagsToCSV";
-            exportTagsToCSV.Size = new Size(288, 22);
-            exportTagsToCSV.Text = "Export Tags to CSV";
-            exportTagsToCSV.Click += exportTagsToCSV_Click;
-            // 
             // MainWindow
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -724,7 +711,6 @@
         private ToolStripMenuItem addChildTagToolStripMenuItem;
         private ToolStripMenuItem tagToolStripMenuItem;
         private ToolStripMenuItem addNewTagToolStripMenuItem;
-        private Button addTagButton;
         private ToolStripMenuItem toolStripMenuItem6;
         private ToolStripMenuItem toolStripMenuItem9;
         private ToolStripMenuItem toolStripMenuItem10;

@@ -370,8 +370,9 @@ namespace Calypso
                 if (!File.Exists(img.ThumbnailPath))
                     Util.CreateThumbnail(lib, img.Filepath);
 
+            lib.EnsureUngrouped();
+            lib.EnsureDateGroup();
             SetAllAndUntaggedToDict();
-            lib.SyncGroupMembership();
             BackfillDHashes();
             BackfillColorGrids();
         }
@@ -382,15 +383,46 @@ namespace Calypso
             {
                 if (!ActiveLibrary.filenameDict.ContainsKey(filename))
                 {
-                    ActiveLibrary.filenameDict[filename] =
-                        new ImageData(filename, Util.CreateThumbnail(ActiveLibrary, filename));
+                    var img = new ImageData(filename, Util.CreateThumbnail(ActiveLibrary, filename));
+                    ApplyDateTag(img);
+                    ActiveLibrary.filenameDict[filename] = img;
                 }
             }
+        }
+
+        /// <summary>
+        /// Adds a "mm-yy" tag (e.g. "04-25") derived from the file's last-write time,
+        /// which typically reflects when it was downloaded or last modified.
+        /// Also ensures the tag exists in the library's tag tree.
+        /// </summary>
+        private static void ApplyDateTag(ImageData img)
+        {
+            try
+            {
+                var date = DateTime.Now;
+                string tag = date.ToString("MM-yy"); // e.g. "04-25"
+                if (!img.Tags.Contains(tag))
+                    img.Tags.Add(tag);
+
+                var lib = ActiveLibrary;
+                if (lib == null) return;
+
+                // Ensure the tag node exists in the tree
+                if (!lib.tagTree.tagNodes.Any(n => n.Name == tag))
+                    lib.tagTree.tagNodes.Add(new TagNode(tag));
+
+                // Assign to Date group if not already in any group
+                bool alreadyAssigned = lib.Groups.Any(g => g.Tags.Contains(tag));
+                if (!alreadyAssigned)
+                    lib.EnsureDateGroup().Tags.Add(tag);
+            }
+            catch { /* file inaccessible — skip */ }
         }
 
         public static void GenTagDictAndSaveLibrary()
         {
             SetAllAndUntaggedToDict();
+            ActiveLibrary.SyncGroupMembership();
             SaveLibrary(ActiveLibrary);
         }
 

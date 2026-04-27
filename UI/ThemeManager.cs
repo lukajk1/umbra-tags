@@ -89,6 +89,8 @@ namespace Calypso.UI
         public static void Apply(Control root)
         {
             ApplyControl(root);
+            // Don't recurse into GradientPanel — it manages its own children's colors
+            if (root is GradientPanel) return;
             foreach (Control child in root.Controls)
                 Apply(child);
         }
@@ -169,6 +171,10 @@ namespace Calypso.UI
 
                 case PictureBox pb:
                     pb.BackColor = Theme.Background;
+                    break;
+
+                case GradientPanel:
+                    // gradient panel manages its own background — don't override
                     break;
 
                 case Panel p:

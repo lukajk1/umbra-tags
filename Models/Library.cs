@@ -16,6 +16,10 @@ namespace Calypso
         public List<TagGroup> Groups { get; set; } = new();
 
         public const string UngroupedName = "Default Group";
+        public const string DateGroupName  = "Date";
+
+        private static readonly System.Text.RegularExpressions.Regex _dateTagRegex =
+            new(@"^\d{2}-\d{2}$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
         // ── group helpers ─────────────────────────────────────────────────
 
@@ -27,7 +31,7 @@ namespace Calypso
             return null;
         }
 
-        /// <summary>Ensures an Ungrouped group exists and is last in the list.</summary>
+        /// <summary>Ensures the Default Group exists.</summary>
         public TagGroup EnsureUngrouped()
         {
             var ug = Groups.FirstOrDefault(g => g.Name == UngroupedName);
@@ -39,9 +43,25 @@ namespace Calypso
             return ug;
         }
 
+        /// <summary>Ensures the Date group exists.</summary>
+        public TagGroup EnsureDateGroup()
+        {
+            var dg = Groups.FirstOrDefault(g => g.Name == DateGroupName);
+            if (dg == null)
+            {
+                dg = new TagGroup(DateGroupName);
+                // Insert before Default Group so Date sits just above it
+                int ugIndex = Groups.FindIndex(g => g.Name == UngroupedName);
+                if (ugIndex >= 0) Groups.Insert(ugIndex, dg);
+                else Groups.Add(dg);
+            }
+            return dg;
+        }
+
         /// <summary>
         /// Ensures every tag in the tree belongs to a group.
-        /// Tags not found in any group are added to Ungrouped.
+        /// Date-pattern tags (Month-yyyy) go to the Date group;
+        /// everything else goes to Default Group.
         /// Also removes group entries for tags that no longer exist.
         /// </summary>
         public void SyncGroupMembership()
@@ -53,12 +73,16 @@ namespace Calypso
                 g.Tags.RemoveAll(t => !allTagNames.Contains(t));
 
             // Find tags not in any group
-            var assigned = new HashSet<string>(Groups.SelectMany(g => g.Tags));
+            var assigned   = new HashSet<string>(Groups.SelectMany(g => g.Tags));
             var unassigned = allTagNames.Where(t => !assigned.Contains(t)).ToList();
 
             var ungrouped = EnsureUngrouped();
+            var dateGroup = EnsureDateGroup();
             foreach (var t in unassigned)
-                ungrouped.Tags.Add(t);
+            {
+                if (_dateTagRegex.IsMatch(t)) dateGroup.Tags.Add(t);
+                else                          ungrouped.Tags.Add(t);
+            }
         }
 
         /// <summary>Moves a tag (and its descendants) to the target group.</summary>
@@ -114,7 +138,7 @@ namespace Calypso
 
         public void RenameGroup(string oldName, string newName)
         {
-            if (oldName == UngroupedName) return;
+            if (oldName == UngroupedName || oldName == DateGroupName) return;
             if (Groups.Any(g => g.Name == newName)) return;
             var g = Groups.FirstOrDefault(g => g.Name == oldName);
             if (g != null) g.Name = newName;

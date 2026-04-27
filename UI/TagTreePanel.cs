@@ -177,12 +177,28 @@ namespace Calypso
                     };
 
                     // Only top-level tags in this group (no parent, or parent not in same group)
-                    var topTags = group.Tags
+                    var topTagsQuery = group.Tags
                         .Select(t => tagTreeData.tagNodes.FirstOrDefault(n => n.Name == t))
-                        .Where(n => n != null && string.IsNullOrEmpty(n.Parent))
-                        .OrderBy(n => n!.Pinned ? 0 : 1)
-                        .ThenBy(n => n!.Name)
-                        .ToList();
+                        .Where(n => n != null && string.IsNullOrEmpty(n.Parent));
+
+                    IEnumerable<TagNode?> topTags;
+                    if (group.Name == Library.DateGroupName)
+                    {
+                        // Sort date tags newest-first (parse MM-yy, treat yy as 2000+yy)
+                        topTags = topTagsQuery.OrderByDescending(n =>
+                        {
+                            if (DateTime.TryParseExact(n!.Name, "MM-yy",
+                                System.Globalization.CultureInfo.InvariantCulture,
+                                System.Globalization.DateTimeStyles.None, out var d)) return d;
+                            return DateTime.MinValue;
+                        });
+                    }
+                    else
+                    {
+                        topTags = topTagsQuery
+                            .OrderBy(n => n!.Pinned ? 0 : 1)
+                            .ThenBy(n => n!.Name);
+                    }
 
                     foreach (var node in topTags)
                     {
@@ -337,7 +353,7 @@ namespace Calypso
             if (lib == null) return;
 
             string name = gnt.Group.Name;
-            bool isUngrouped = name == Library.UngroupedName;
+            bool isSystem = name == Library.UngroupedName || name == Library.DateGroupName;
 
             foreach (ToolStripItem item in groupContextMenu.Items)
             {
@@ -347,7 +363,7 @@ namespace Calypso
                     {
                         case "Rename Group...":
                         case "Delete Group":
-                            mi.Enabled = !isUngrouped;
+                            mi.Enabled = !isSystem;
                             break;
                     }
                 }

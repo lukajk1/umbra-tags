@@ -77,6 +77,21 @@ namespace Calypso
         }
 
         /// <summary>
+        /// Returns the 8 colors from the bottom 2 rows (row indices 2 and 3),
+        /// ordered left-to-right then top-to-bottom.
+        /// Used for the preview pane vertical streak gradient.
+        /// </summary>
+        public static Color[] BottomTwoRows(string base64)
+        {
+            Color[] cells  = Decode(base64);
+            var result     = new Color[Cols * 2];
+            for (int row = 2; row < Rows; row++)
+                for (int col = 0; col < Cols; col++)
+                    result[(row - 2) * Cols + col] = cells[row * Cols + col];
+            return result;
+        }
+
+        /// <summary>
         /// Returns the overall average color of the image.
         /// </summary>
         public static Color AverageColor(string base64)

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Calypso.UI;
 
 namespace Calypso
 {
@@ -26,6 +27,9 @@ namespace Calypso
         private static Bitmap? _currentFullRes;
         private static Bitmap? _frozenSnapshot;
 
+        // preview pane gradient
+        private static GradientPanel? _gradientPanel;
+
         public static void Init(MainWindow mainW)
         {
             ImageInfoPanel.pictureBox = mainW.pictureBoxImagePreview;
@@ -33,6 +37,23 @@ namespace Calypso
 
             pictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             pictureBox.DoubleClick += PictureBox_DoubleClick;
+
+            // Reparent the metadata table into a GradientPanel so transparency works
+            var tableParent = mainW.tableLayoutImageInfo.Parent;
+            if (tableParent != null)
+            {
+                _gradientPanel = new GradientPanel
+                {
+                    Dock = DockStyle.Fill,
+                };
+                // Remove table from its current parent, add gradient panel in its place,
+                // then add table as a child of the gradient panel
+                tableParent.Controls.Remove(mainW.tableLayoutImageInfo);
+                tableParent.Controls.Add(_gradientPanel);
+                mainW.tableLayoutImageInfo.Dock = DockStyle.Fill;
+                mainW.tableLayoutImageInfo.BackColor = Color.Transparent;
+                _gradientPanel.Controls.Add(mainW.tableLayoutImageInfo);
+            }
 
             InfoTableSetup();
         }
@@ -86,6 +107,9 @@ namespace Calypso
             // Show thumbnail immediately so the UI is never blank
             var thumb = Util.LoadImage(imgData.ThumbnailPath);
             SetPreviewImage(thumb, owned: true);
+
+            // Update preview pane gradient
+            _gradientPanel?.SetColors(imgData.ColorGrid);
 
             // Populate metadata from file info without reading the image
             SetTableInfoFromData(imgData);
@@ -144,6 +168,7 @@ namespace Calypso
             displayedImage = null;
             SetPreviewImage(null, owned: false);
             SetVideoHint(false);
+            _gradientPanel?.SetColors(null);
             labelFilename.Text   = "--";
             labelDimensions.Text = "--";
             labelFilesize.Text   = "--";

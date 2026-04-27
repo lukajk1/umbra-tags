@@ -160,6 +160,7 @@ namespace Calypso
             }
         }
 
+
         #region miscellaneous helpers
         public static void DeleteImageData(List<ImageData> imgDataList)
         {
@@ -284,6 +285,7 @@ namespace Calypso
                 }
 
                 var imgData = new ImageData(destPath, thumbPath) { DHash = incomingHash, ColorGrid = colorGrid };
+                ApplyDateTag(imgData);
                 lib.filenameDict[destPath] = imgData;
                 added.Add(imgData);
             }
