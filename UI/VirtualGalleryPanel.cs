@@ -708,8 +708,20 @@ namespace Calypso.UI
 
         protected override void OnDragEnter(DragEventArgs drgevent)
         {
-            if (drgevent.Data?.GetDataPresent(DataFormats.FileDrop) == true)
+            if (drgevent.Data?.GetData(DataFormats.FileDrop) is string[] files &&
+                files.Any(f => Util.IsSupportedExtension(Path.GetExtension(f).ToLower())))
                 drgevent.Effect = DragDropEffects.Copy;
+            else
+                drgevent.Effect = DragDropEffects.None;
+        }
+
+        protected override void OnDragOver(DragEventArgs drgevent)
+        {
+            if (drgevent.Data?.GetData(DataFormats.FileDrop) is string[] files &&
+                files.Any(f => Util.IsSupportedExtension(Path.GetExtension(f).ToLower())))
+                drgevent.Effect = DragDropEffects.Copy;
+            else
+                drgevent.Effect = DragDropEffects.None;
         }
 
         protected override void OnDragDrop(DragEventArgs drgevent)
