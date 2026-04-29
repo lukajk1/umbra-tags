@@ -146,8 +146,24 @@ namespace Calypso
 
             if (path.EndsWith(".webp", StringComparison.OrdinalIgnoreCase))
             {
-                byte[] bytes = File.ReadAllBytes(path);
-                return new SimpleDecoder().DecodeFromBytes(bytes, bytes.LongLength);
+                try
+                {
+                    byte[] bytes = File.ReadAllBytes(path);
+                    return new SimpleDecoder().DecodeFromBytes(bytes, bytes.LongLength);
+                }
+                catch
+                {
+                    // Corrupt or invalid WebP — fall through to GDI+ as a last resort
+                    try
+                    {
+                        using var ms2 = new MemoryStream(File.ReadAllBytes(path));
+                        return new Bitmap(ms2);
+                    }
+                    catch
+                    {
+                        return MakeVideoPlaceholder(256); // last resort placeholder
+                    }
+                }
             }
             // Load via MemoryStream so GDI+ doesn't hold a file lock on the source
             using var ms = new MemoryStream(File.ReadAllBytes(path));
@@ -173,7 +189,7 @@ namespace Calypso
             if (!File.Exists(originalImagePath)) return "";
 
             string originalFilename = Path.GetFileName(originalImagePath);
-            string thumbDir = Path.Combine(lib.Dirpath, "data");
+            string thumbDir = DB.LibraryDataDir(lib.Name);
 
             string nameNoExt = Path.GetFileNameWithoutExtension(originalFilename);
             string ext = Path.GetExtension(originalFilename);
@@ -191,9 +207,13 @@ namespace Calypso
 
             string thumbSavePath = Path.Combine(thumbDir, thumbFilename);
 
-            using Image thumb = CreateThumbnailBitmap(originalImagePath, GlobalValues.ThumbnailSize);
-            ImageFormat format = GetImageFormatFromExtension(thumbSavePath);
-            thumb.Save(thumbSavePath, format);
+            try
+            {
+                using Image thumb = CreateThumbnailBitmap(originalImagePath, GlobalValues.ThumbnailSize);
+                ImageFormat format = GetImageFormatFromExtension(thumbSavePath);
+                thumb.Save(thumbSavePath, format);
+            }
+            catch { /* corrupt or unreadable file — skip thumbnail */ }
 
             return thumbSavePath;
         }

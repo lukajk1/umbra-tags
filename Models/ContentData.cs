@@ -26,7 +26,6 @@ namespace Calypso
     }
     public class ImageData : ContentData
     {
-        public string ThumbnailPath { get; }
         public ulong DHash { get; set; }
         public bool IsArchived { get; set; } = false;
 
@@ -38,11 +37,22 @@ namespace Calypso
 
         public bool IsVideo => Util.IsVideoExtension(Path.GetExtension(Filepath));
 
-        public ImageData(string filepath, string thumbnailPath)
+        /// <summary>
+        /// Dynamically computed from Filepath — never stored to disk.
+        /// Derives the thumbnail filename the same way CreateThumbnail does.
+        /// </summary>
+        [Newtonsoft.Json.JsonIgnore]
+        public string ThumbnailPath => DB.GetThumbnailPath(Filepath);
+
+        public ImageData(string filepath)
         {
             Filepath = filepath;
             Filename = Path.GetFileName(Filepath);
-            ThumbnailPath = thumbnailPath;
         }
+
+        // Deserialization constructor — Newtonsoft may pass a thumbnailPath from
+        // old library files; we accept and discard it so old saves load cleanly.
+        [Newtonsoft.Json.JsonConstructor]
+        public ImageData(string filepath, string? thumbnailPath) : this(filepath) { }
     }
 }

@@ -270,11 +270,12 @@ namespace Calypso
 
                 if (lib.filenameDict.ContainsKey(destPath)) continue;
 
-                string thumbPath = Util.CreateThumbnail(lib, destPath);
-                if (string.IsNullOrEmpty(thumbPath)) continue;
+                Util.CreateThumbnail(lib, destPath);
+                string thumbPath = DB.GetThumbnailPath(destPath);
+                if (!File.Exists(thumbPath)) continue;
 
                 string? colorGrid = null;
-                if (!isVideo && !string.IsNullOrEmpty(thumbPath))
+                if (!isVideo)
                 {
                     try
                     {
@@ -284,7 +285,7 @@ namespace Calypso
                     catch { }
                 }
 
-                var imgData = new ImageData(destPath, thumbPath) { DHash = incomingHash, ColorGrid = colorGrid };
+                var imgData = new ImageData(destPath) { DHash = incomingHash, ColorGrid = colorGrid };
                 ApplyDateTag(imgData);
                 lib.filenameDict[destPath] = imgData;
                 added.Add(imgData);

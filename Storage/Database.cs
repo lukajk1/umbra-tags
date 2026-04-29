@@ -28,6 +28,7 @@ namespace Calypso
         public static Library  ActiveLibrary = null!;
 
         private static string _appFolder      = string.Empty;
+        public  static string AppFolder       => _appFolder;
         private static string _appdataPath    = string.Empty;
         private static string _appdataBakPath = string.Empty;
         private static string _appdataTmpPath = string.Empty;
@@ -115,8 +116,7 @@ namespace Calypso
 
             if (!Directory.Exists(lib.Dirpath)) return;
 
-            string thumbPath = Path.Combine(lib.Dirpath, "data");
-            if (!Directory.Exists(thumbPath)) Directory.CreateDirectory(thumbPath);
+            Directory.CreateDirectory(LibraryDataDir(lib.Name));
 
             SyncLibraryFiles(lib);
             Save();
@@ -264,8 +264,7 @@ namespace Calypso
                 return;
             }
 
-            string thumbPath = Path.Combine(lib.Dirpath, "data");
-            if (!Directory.Exists(thumbPath)) Directory.CreateDirectory(thumbPath);
+            Directory.CreateDirectory(LibraryDataDir(lib.Name));
 
             SyncLibraryFiles(lib);
             Save();
@@ -280,6 +279,32 @@ namespace Calypso
         }
 
         // ── helpers ───────────────────────────────────────────────────────
+
+        public static string LibraryDataDir(string libraryName)
+            => Path.Combine(_appFolder, SanitizeName(libraryName), "data");
+
+        /// <summary>
+        /// Computes the thumbnail path for a given image filepath using the active library.
+        /// Mirrors the filename logic in Util.CreateThumbnail.
+        /// </summary>
+        public static string GetThumbnailPath(string filepath)
+        {
+            string dir        = ActiveLibrary != null ? LibraryDataDir(ActiveLibrary.Name) : "";
+            string filename   = Path.GetFileName(filepath);
+            string nameNoExt  = Path.GetFileNameWithoutExtension(filename);
+            string ext        = Path.GetExtension(filename).ToLower();
+            bool   isVideo    = Util.IsVideoExtension(ext);
+            bool   isWebP     = ext == ".webp";
+            bool   isJfif     = ext == ".jfif";
+
+            string thumbFilename = (isVideo || isWebP)
+                ? "thumb_" + nameNoExt + ".png"
+                : isJfif
+                    ? "thumb_" + nameNoExt + ".jpg"
+                    : "thumb_" + filename;
+
+            return Path.Combine(dir, thumbFilename);
+        }
 
         private static string LibraryPath(LibraryStub stub)
             => Path.Combine(_appFolder, SanitizeName(stub.Name) + ".library");
@@ -383,7 +408,8 @@ namespace Calypso
             {
                 if (!ActiveLibrary.filenameDict.ContainsKey(filename))
                 {
-                    var img = new ImageData(filename, Util.CreateThumbnail(ActiveLibrary, filename));
+                    Util.CreateThumbnail(ActiveLibrary, filename);
+                    var img = new ImageData(filename);
                     ApplyDateTag(img);
                     ActiveLibrary.filenameDict[filename] = img;
                 }
