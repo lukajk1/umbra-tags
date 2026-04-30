@@ -100,7 +100,7 @@ namespace Calypso
         {
             if (ActiveLibrary == null) return;
             TagTreePanel.i.Populate(ActiveLibrary.tagTree, ActiveLibrary.tagDict);
-            Searchbar.Search(appdata.LastSession.LastSearch ?? "all");
+            Searchbar.Search(appdata.LastSession.LastSearch ?? "@all");
         }
 
         /// <summary>
@@ -269,7 +269,7 @@ namespace Calypso
             SyncLibraryFiles(lib);
             Save();
 
-            if (search) Searchbar.Search("all");
+            if (search) Searchbar.Search("@all");
 
             if (MainWindow.initialized)
                 TagTreePanel.i.Populate(ActiveLibrary.tagTree, ActiveLibrary.tagDict);
@@ -467,8 +467,8 @@ namespace Calypso
                 if (img.Tags.Count == 0) untagged.Add(img);
             }
 
-            tagDict["all"]      = all;
-            tagDict["untagged"] = untagged;
+            tagDict["@all"]      = all;
+            tagDict["@untagged"] = untagged;
         }
     }
 }

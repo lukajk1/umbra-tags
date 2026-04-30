@@ -231,9 +231,9 @@ namespace Calypso
             output = input.Trim();
 
             // Check for reserved names before any processing
-            if (output == "all" || output == "untagged")
+            if (output.StartsWith("@"))
             {
-                Util.ShowErrorDialog($"Invalid name for a tag!");
+                Util.ShowErrorDialog($"Tag names cannot start with '@'.");
                 return false;
             }
 
@@ -339,7 +339,7 @@ namespace Calypso
             }
 
             // Remove tag references from images
-            foreach (ImageData img in tagDict["all"])
+            foreach (ImageData img in tagDict["@all"])
                 img.Tags.RemoveAll(t => allTagsToRemove.Contains(t));
 
             RefreshTagStructure();

@@ -10,7 +10,7 @@ namespace Calypso
     internal static class Searchbar
     {
         static MainWindow? mainW;
-        static string lastSearch = "all";
+        static string lastSearch = "@all";
         public static void Init(MainWindow? mainW)
         {
             Searchbar.mainW = mainW;

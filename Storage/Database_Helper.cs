@@ -20,7 +20,7 @@ namespace Calypso
         /// </summary>
         public static readonly HashSet<string> VirtualTags = new(StringComparer.OrdinalIgnoreCase)
         {
-            "all", "untagged", "archived", "randimg", "allvideos", "randtag"
+            "@all", "@untagged", "@archived", "@randimg", "@allvideos", "@randtag", "@bydate"
         };
 
         private const string GroupPrefix = "g:";
@@ -35,7 +35,7 @@ namespace Calypso
 
             string stripped = new string(searchTextRaw.Where(c => !char.IsWhiteSpace(c)).ToArray());
 
-            if (stripped == "randimg")
+            if (stripped == "@randimg")
             {
                 var all = ActiveLibrary.filenameDict.Values.Where(img => !img.IsArchived).ToList();
                 if (all.Count > 0)
@@ -47,7 +47,7 @@ namespace Calypso
                     return;
                 }
             }
-            else if (stripped == "randtag")
+            else if (stripped == "@randtag")
             {
                 var userTags = ActiveLibrary.tagTree.tagNodes
                     .Where(n => !VirtualTags.Contains(n.Name))
@@ -59,11 +59,18 @@ namespace Calypso
                     return;
                 }
             }
-            else if (stripped == "archived")
+            else if (stripped == "@archived")
             {
                 results = ActiveLibrary.filenameDict.Values.Where(img => img.IsArchived).ToList();
             }
-            else if (stripped == "allvideos")
+            else if (stripped == "@bydate")
+            {
+                results = ActiveLibrary.filenameDict.Values
+                    .Where(img => !img.IsArchived)
+                    .OrderByDescending(img => img.ImportedAt)
+                    .ToList();
+            }
+            else if (stripped == "@allvideos")
             {
                 results = ActiveLibrary.filenameDict.Values
                     .Where(img => !img.IsArchived && img.IsVideo).ToList();
@@ -105,8 +112,8 @@ namespace Calypso
 
                     results = results.Distinct().Where(img => !img.IsArchived).ToList();
 
-                    if (stripped == "untagged")
-                        results = results.OrderByDescending(img => File.GetLastWriteTime(img.Filepath)).ToList();
+                    if (stripped == "@untagged")
+                        results = results.OrderByDescending(img => img.ImportedAt).ToList();
                 }
             }
 

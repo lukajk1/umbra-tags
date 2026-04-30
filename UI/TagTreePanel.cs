@@ -135,19 +135,21 @@ namespace Calypso
             tagTree.NodeMouseClick += OnTagNodeClick;
 
             // ── virtual tags block ────────────────────────────────────────
-            int activeCount  = tagDict.ContainsKey("all")      ? tagDict["all"].Count      : 0;
-            int untaggedCount= tagDict.ContainsKey("untagged") ? tagDict["untagged"].Count : 0;
+            int activeCount  = tagDict.ContainsKey("@all")      ? tagDict["@all"].Count      : 0;
+            int untaggedCount= tagDict.ContainsKey("@untagged") ? tagDict["@untagged"].Count : 0;
             int archivedCount= DB.ActiveLibrary?.filenameDict.Values.Count(img => img.IsArchived) ?? 0;
             int videoCount   = DB.ActiveLibrary?.filenameDict.Values.Count(img => !img.IsArchived && img.IsVideo) ?? 0;
 
-            TreeNode nodeAll      = MakeVirtualNode($"All Images ({activeCount})",    "all");
-            TreeNode nodeVideos   = MakeVirtualNode($"All Videos ({videoCount})",     "allvideos");
-            TreeNode nodeUntagged = MakeVirtualNode($"Untagged ({untaggedCount})",    "untagged");
-            TreeNode nodeArchived = MakeVirtualNode($"Archived ({archivedCount})",    "archived");
-            TreeNode nodeRandImg  = MakeVirtualNode("Random Image",                   "randimg");
-            TreeNode nodeRandTag  = MakeVirtualNode("Random Tag",                     "randtag");
+            TreeNode nodeAll      = MakeVirtualNode($"All Images ({activeCount})",    "@all");
+            TreeNode nodeByDate   = MakeVirtualNode("By Date",                        "@bydate");
+            TreeNode nodeVideos   = MakeVirtualNode($"All Videos ({videoCount})",     "@allvideos");
+            TreeNode nodeUntagged = MakeVirtualNode($"Untagged ({untaggedCount})",    "@untagged");
+            TreeNode nodeArchived = MakeVirtualNode($"Archived ({archivedCount})",    "@archived");
+            TreeNode nodeRandImg  = MakeVirtualNode("Random Image",                   "@randimg");
+            TreeNode nodeRandTag  = MakeVirtualNode("Random Tag",                     "@randtag");
 
             tagTree.Nodes.Add(nodeAll);
+            tagTree.Nodes.Add(nodeByDate);
             tagTree.Nodes.Add(nodeVideos);
             tagTree.Nodes.Add(nodeUntagged);
             tagTree.Nodes.Add(nodeArchived);

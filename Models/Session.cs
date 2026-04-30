@@ -14,11 +14,11 @@ namespace Calypso
         public FormWindowState WindowState { get; set; }
         public LibraryStub? LastActiveLibrary { get; set; }
         public int ZoomModifier { get; set; }
-        public string LastSearch { get; set; } = "all";
+        public string LastSearch { get; set; } = "@all";
 
         public Session(int windowWidth, int windowHeight, bool randomiseChecked,
                     FormWindowState windowState, LibraryStub? lastActiveLibrary, int zoomModifier,
-                    string lastSearch = "all")
+                    string lastSearch = "@all")
         {
             WindowWidth = windowWidth;
             WindowHeight = windowHeight;
