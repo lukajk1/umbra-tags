@@ -20,7 +20,7 @@ namespace Calypso
         /// </summary>
         public static readonly HashSet<string> VirtualTags = new(StringComparer.OrdinalIgnoreCase)
         {
-            "@all", "@untagged", "@archived", "@randimg", "@allvideos", "@randtag", "@bydate"
+            "@all", "@untagged", "@archived", "@randimg", "@allvideos", "@randtag"
         };
 
         private const string GroupPrefix = "g:";
@@ -62,13 +62,6 @@ namespace Calypso
             else if (stripped == "@archived")
             {
                 results = ActiveLibrary.filenameDict.Values.Where(img => img.IsArchived).ToList();
-            }
-            else if (stripped == "@bydate")
-            {
-                results = ActiveLibrary.filenameDict.Values
-                    .Where(img => !img.IsArchived)
-                    .OrderByDescending(img => img.ImportedAt)
-                    .ToList();
             }
             else if (stripped == "@allvideos")
             {
@@ -135,6 +128,21 @@ namespace Calypso
 
 
 
+
+        // Max average-color distance to still consider images as potential duplicates.
+        // Scale is 0–441 (Euclidean RGB). 40 ~= "same general color palette".
+        private const double ColorGuardThreshold = 40.0;
+
+        /// <summary>
+        /// Returns false if the two color grids are far enough apart that the images
+        /// cannot be duplicates, short-circuiting the more expensive dHash check.
+        /// Returns true if either grid is missing (fail open).
+        /// </summary>
+        private static bool ColorGuard(string? a, string? b)
+        {
+            if (a == null || b == null) return true;
+            return ColorGrid.Distance(a, ColorGrid.AverageColor(b)) <= ColorGuardThreshold;
+        }
 
         private static void BackfillDHashes()
         {
@@ -236,10 +244,12 @@ namespace Calypso
                 // Check for similar images before importing (skip duplicate check for videos)
                 bool isVideo = Util.IsVideoExtension(ext);
                 ulong incomingHash = 0;
+                string? incomingColorGrid = null;
                 if (!isVideo)
                 {
                     using var bmp = Util.LoadImage(fp);
                     incomingHash = DHash.Compute(bmp);
+                    incomingColorGrid = ColorGrid.Compute(bmp);
                 }
 
                 bool skipFile = false;
@@ -248,7 +258,8 @@ namespace Calypso
                 {
                     var similar = lib.filenameDict.Values
                         .FirstOrDefault(img => DHash.IsSimilar(incomingHash, img.DHash)
-                                            && !dismissed.Contains(img.Filepath));
+                                            && !dismissed.Contains(img.Filepath)
+                                            && ColorGuard(incomingColorGrid, img.ColorGrid));
                     if (similar == null) break;
 
                     using var modal = new PotentialDuplicateModal(fp, similar.Filepath);

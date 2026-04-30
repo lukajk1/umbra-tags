@@ -141,7 +141,6 @@ namespace Calypso
             int videoCount   = DB.ActiveLibrary?.filenameDict.Values.Count(img => !img.IsArchived && img.IsVideo) ?? 0;
 
             TreeNode nodeAll      = MakeVirtualNode($"All Images ({activeCount})",    "@all");
-            TreeNode nodeByDate   = MakeVirtualNode("By Date",                        "@bydate");
             TreeNode nodeVideos   = MakeVirtualNode($"All Videos ({videoCount})",     "@allvideos");
             TreeNode nodeUntagged = MakeVirtualNode($"Untagged ({untaggedCount})",    "@untagged");
             TreeNode nodeArchived = MakeVirtualNode($"Archived ({archivedCount})",    "@archived");
@@ -149,7 +148,6 @@ namespace Calypso
             TreeNode nodeRandTag  = MakeVirtualNode("Random Tag",                     "@randtag");
 
             tagTree.Nodes.Add(nodeAll);
-            tagTree.Nodes.Add(nodeByDate);
             tagTree.Nodes.Add(nodeVideos);
             tagTree.Nodes.Add(nodeUntagged);
             tagTree.Nodes.Add(nodeArchived);

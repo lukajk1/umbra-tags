@@ -364,6 +364,7 @@ namespace Calypso
             Save();
             TagTreePanel.i.Populate(ActiveLibrary.tagTree, ActiveLibrary.tagDict);
             Searchbar.RepeatLastSearch();
+            Toast.Show($"Library \"{ActiveLibrary.Name}\" refreshed");
         }
 
         private static void PurgeReservedTags(Library lib)
@@ -467,7 +468,7 @@ namespace Calypso
                 if (img.Tags.Count == 0) untagged.Add(img);
             }
 
-            tagDict["@all"]      = all;
+            tagDict["@all"]      = all.OrderByDescending(img => img.ImportedAt).ToList();
             tagDict["@untagged"] = untagged;
         }
     }
