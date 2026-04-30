@@ -160,6 +160,13 @@ namespace Calypso
             }
         }
 
+        private static void BackfillImportTimestamps()
+        {
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            foreach (var img in ActiveLibrary.filenameDict.Values)
+                if (img.ImportedAt == 0)
+                    img.ImportedAt = now;
+        }
 
         #region miscellaneous helpers
         public static void DeleteImageData(List<ImageData> imgDataList)

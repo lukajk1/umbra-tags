@@ -400,6 +400,7 @@ namespace Calypso
             SetAllAndUntaggedToDict();
             BackfillDHashes();
             BackfillColorGrids();
+            BackfillImportTimestamps();
         }
 
         private static void AddNewEntriesToFilenameDict(string[] newImageFilepaths)
@@ -426,6 +427,7 @@ namespace Calypso
             try
             {
                 var date = DateTime.Now;
+                img.ImportedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 string tag = date.ToString("MM-yy"); // e.g. "04-25"
                 if (!img.Tags.Contains(tag))
                     img.Tags.Add(tag);

@@ -28,6 +28,7 @@ namespace Calypso
     {
         public ulong DHash { get; set; }
         public bool IsArchived { get; set; } = false;
+        public long ImportedAt { get; set; } = 0;  // Unix timestamp (seconds UTC); 0 = not yet set
 
         /// <summary>
         /// 4x4 color grid stored as base64-encoded RGB bytes (48 bytes → 64 chars).
