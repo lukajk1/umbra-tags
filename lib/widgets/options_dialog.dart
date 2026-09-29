@@ -17,10 +17,11 @@ class AppOptions {
     required this.reopenLastLibrary,
     required this.receiverEnabled,
     required this.receiverPort,
+    this.minimizeToTray = false,
   });
   final MlSettings ml;
   final Set<String> preloadModels;
-  final bool reopenLastLibrary, receiverEnabled;
+  final bool reopenLastLibrary, receiverEnabled, minimizeToTray;
   final int receiverPort;
 }
 
@@ -51,6 +52,7 @@ class _OptionsDialogState extends State<OptionsDialog> {
   late bool _assign = widget.options.ml.assignTags;
   late final _preload = Set<String>.from(widget.options.preloadModels);
   late bool _reopen = widget.options.reopenLastLibrary;
+  late bool _minimizeToTray = widget.options.minimizeToTray;
   late bool _receiverEnabled = widget.options.receiverEnabled;
   late final _port = TextEditingController(
     text: widget.options.receiverPort.toString(),
@@ -155,6 +157,7 @@ class _OptionsDialogState extends State<OptionsDialog> {
           reopenLastLibrary: _reopen,
           receiverEnabled: _receiverEnabled,
           receiverPort: port,
+          minimizeToTray: _minimizeToTray,
         ),
         loadNow,
       );
@@ -302,6 +305,24 @@ class _OptionsDialogState extends State<OptionsDialog> {
                                     ),
                                     onChanged: (v) =>
                                         setState(() => _reopen = v!),
+                                  ),
+                                  CheckboxListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    value: _minimizeToTray,
+                                    title: const Text(
+                                      'Minimize to tray on close',
+                                    ),
+                                    subtitle: const Text(
+                                      'Closing the window keeps Umbra Tags '
+                                      'running in the system tray. Quit from '
+                                      'the tray icon or File → Quit. The '
+                                      'browser extension can only send images '
+                                      'while Umbra Tags is running, so it '
+                                      'stops working once the app is fully '
+                                      'closed.',
+                                    ),
+                                    onChanged: (v) =>
+                                        setState(() => _minimizeToTray = v!),
                                   ),
                                   const Divider(),
                                   const Text(

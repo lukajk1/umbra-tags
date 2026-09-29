@@ -177,6 +177,11 @@ Preloading does not change per-library indexing pause/resume. Unchecked models
 still load when their features need them. The old all-model startup preference
 migrates to the three individual checkboxes.
 
+Startup also has **Minimize to tray on close**: closing the window then keeps Umbra
+Tags running in the system tray, so the browser extension can keep sending images.
+Left-click the tray icon to reopen; right-click for Open / Quit, or use File → Quit.
+The extension cannot send images while the app is fully closed.
+
 Machine learning contains the classifier choice, ML folder, Python override,
 classification threshold and automatic assignment controls. Browser extension
 can disable/enable the local receiver or change its port (1024–65535; default 8934).

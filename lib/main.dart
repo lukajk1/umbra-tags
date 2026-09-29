@@ -7,6 +7,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:tray_manager/tray_manager.dart' as tray;
 import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
@@ -148,7 +149,8 @@ class GalleryPage extends StatefulWidget {
   State<GalleryPage> createState() => _GalleryPageState();
 }
 
-class _GalleryPageState extends State<GalleryPage> with WindowListener {
+class _GalleryPageState extends State<GalleryPage>
+    with WindowListener, tray.TrayListener {
   double _tileSize = 200;
   LayoutMode _layout = LayoutMode.crop;
   double _committedWidth = 0;
@@ -256,6 +258,11 @@ class _GalleryPageState extends State<GalleryPage> with WindowListener {
   MlSettings _mlSettings = const MlSettings();
   final Set<String> _startupModels = {};
   bool _reopenLastLibrary = true;
+  // Closing the window hides it to the tray instead of quitting, so the
+  // browser receiver keeps running. File → Quit or the tray's Quit exit.
+  bool _minimizeToTray = false;
+  bool _quitRequested = false;
+  bool _inTray = false;
   bool _receiverEnabled = true;
   int _receiverPort = kPort;
   bool _warmingModels = false;
@@ -432,6 +439,7 @@ class _GalleryPageState extends State<GalleryPage> with WindowListener {
           ml: _mlSettings,
           preloadModels: Set.of(_startupModels),
           reopenLastLibrary: _reopenLastLibrary,
+          minimizeToTray: _minimizeToTray,
           receiverEnabled: _receiverEnabled,
           receiverPort: _receiverPort,
         ),
@@ -499,6 +507,7 @@ class _GalleryPageState extends State<GalleryPage> with WindowListener {
         ..clear()
         ..addAll(options.preloadModels);
       _reopenLastLibrary = options.reopenLastLibrary;
+      _minimizeToTray = options.minimizeToTray;
       _receiverEnabled = options.receiverEnabled;
       _receiverPort = options.receiverPort;
     });
@@ -739,6 +748,7 @@ class _GalleryPageState extends State<GalleryPage> with WindowListener {
   void initState() {
     super.initState();
     windowManager.addListener(this);
+    tray.trayManager.addListener(this);
     _scrollController.addListener(_rememberScrollPosition);
     _restoreSession();
   }
@@ -782,6 +792,7 @@ class _GalleryPageState extends State<GalleryPage> with WindowListener {
         _startupModels.addAll(startupModels.keys);
       }
       _reopenLastLibrary = data['reopenLastLibrary'] != false;
+      _minimizeToTray = data['minimizeToTray'] == true;
       _receiverEnabled = data['receiverEnabled'] != false;
       final port = data['receiverPort'];
       _receiverPort = port is int && port >= 1024 && port <= 65535
@@ -839,6 +850,7 @@ class _GalleryPageState extends State<GalleryPage> with WindowListener {
     final data = <String, dynamic>{
       'startupModels': _startupModels.toList(),
       'reopenLastLibrary': _reopenLastLibrary,
+      'minimizeToTray': _minimizeToTray,
       'receiverEnabled': _receiverEnabled,
       'receiverPort': _receiverPort,
       'tileSize': _tileSize,
@@ -1661,6 +1673,10 @@ class _GalleryPageState extends State<GalleryPage> with WindowListener {
   @override
   void onWindowClose() async {
     if (_closingWindow) return;
+    if (_minimizeToTray && !_quitRequested) {
+      await _hideToTray();
+      return;
+    }
     _closeRequested = true;
     _cancelClassification = true;
     setState(() {
@@ -1732,7 +1748,66 @@ class _GalleryPageState extends State<GalleryPage> with WindowListener {
         ).writeAsString('${timings.join('\n')}\n');
       })().timeout(const Duration(milliseconds: 500));
     } catch (_) {}
+    if (_inTray) {
+      try {
+        await tray.trayManager.destroy();
+      } catch (_) {}
+    }
     await windowManager.destroy();
+  }
+
+  /// Quits for real, even when closing normally hides to the tray.
+  void _quit() {
+    _quitRequested = true;
+    windowManager.close();
+  }
+
+  Future<void> _hideToTray() async {
+    try {
+      if (!_inTray) {
+        await tray.trayManager.setIcon('assets/tray_icon.ico');
+        await tray.trayManager.setToolTip('Umbra Tags');
+        await tray.trayManager.setContextMenu(
+          tray.Menu(
+            items: [
+              tray.MenuItem(key: 'open', label: 'Open Umbra Tags'),
+              tray.MenuItem.separator(),
+              tray.MenuItem(key: 'quit', label: 'Quit'),
+            ],
+          ),
+        );
+        _inTray = true;
+      }
+    } catch (_) {
+      // Without a tray icon there would be no way back to a hidden window.
+      _quit();
+      return;
+    }
+    // Save now: while hidden, the next exit may be a Windows sign-out.
+    _rememberScrollPosition();
+    _writeSession();
+    await windowManager.hide();
+  }
+
+  Future<void> _showFromTray() async {
+    await windowManager.show();
+    await windowManager.focus();
+    if (_inTray) {
+      _inTray = false;
+      await tray.trayManager.destroy();
+    }
+  }
+
+  @override
+  void onTrayIconMouseDown() => _showFromTray();
+
+  @override
+  void onTrayIconRightMouseDown() => tray.trayManager.popUpContextMenu();
+
+  @override
+  void onTrayMenuItemClick(tray.MenuItem menuItem) {
+    if (menuItem.key == 'open') _showFromTray();
+    if (menuItem.key == 'quit') _quit();
   }
 
   void _onLayoutWidth(double width) {
@@ -1751,6 +1826,7 @@ class _GalleryPageState extends State<GalleryPage> with WindowListener {
     _sessionTimer?.cancel();
     if (!_closingWindow) _writeSession();
     windowManager.removeListener(this);
+    tray.trayManager.removeListener(this);
     unawaited(_standbyEmbedder?.dispose() ?? Future<void>.value());
     unawaited(_receiver?.close() ?? Future<void>.value());
     unawaited(_tagSuggester?.dispose() ?? Future<void>.value());
@@ -1881,7 +1957,7 @@ class _GalleryPageState extends State<GalleryPage> with WindowListener {
                 ),
                 const Divider(),
                 MenuItemButton(
-                  onPressed: _busy ? null : () => windowManager.close(),
+                  onPressed: _busy ? null : _quit,
                   child: const Text('Quit'),
                 ),
               ],
