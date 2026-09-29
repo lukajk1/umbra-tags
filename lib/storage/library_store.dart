@@ -227,6 +227,11 @@ class LibraryStore {
 
   Future<String> backup() async => await _call('backup') as String;
 
+  /// Image counts for All images, Untagged and Archived, keyed by
+  /// 'all', 'untagged' and 'archived'.
+  Future<Map<String, int>> viewCounts() async =>
+      Map<String, int>.from(await _call('viewCounts') as Map);
+
   Future<List<LibraryTag>> tags() async => (await _call('tags') as List)
       .map((row) => LibraryTag.fromMap(row as Map))
       .toList();
@@ -535,6 +540,8 @@ class _LibraryEngine {
             .toList();
       case 'tags':
         return TagRepository(db).tags();
+      case 'viewCounts':
+        return TagRepository(db).viewCounts();
       case 'saveTag':
         final values = args as Map;
         return TagRepository(db).save(

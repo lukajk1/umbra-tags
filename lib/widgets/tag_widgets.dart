@@ -161,6 +161,7 @@ class TagSidebar extends StatefulWidget {
     required this.onDelete,
     this.onFindMatches,
     this.onToggleExcluded,
+    this.viewCounts = const {},
   });
   final List<LibraryTag> tags;
   final LibraryView view;
@@ -174,6 +175,9 @@ class TagSidebar extends StatefulWidget {
 
   /// Toggles whether the tag's images are left out of All images.
   final ValueChanged<LibraryTag>? onToggleExcluded;
+
+  /// Image counts shown beside All images, Untagged and Archived.
+  final Map<LibraryView, int> viewCounts;
   @override
   State<TagSidebar> createState() => _TagSidebarState();
 }
@@ -226,8 +230,17 @@ class _TagSidebarState extends State<TagSidebar> {
               ListTile(
                 dense: true,
                 leading: Icon(icon, size: 19),
-                title: Text(
-                  title,
+                title: Text.rich(
+                  TextSpan(
+                    text: title,
+                    children: [
+                      if (widget.viewCounts[view] case final count?)
+                        TextSpan(
+                          text: ' ($count)',
+                          style: const TextStyle(color: Colors.white54),
+                        ),
+                    ],
+                  ),
                   style: const TextStyle(
                     fontFamily: 'LibreBaskerville',
                     fontWeight: FontWeight.w400,

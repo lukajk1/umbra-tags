@@ -116,6 +116,25 @@ void main() {
     );
   });
 
+  test('view counts match All images, Untagged and Archived', () async {
+    final store = await create();
+    final hidden = await store.saveTag(name: 'Hidden');
+    final a = (await store.importImage((await picture('a.png')).path)).asset;
+    final b = (await store.importImage(
+      (await picture('b.png', width: 31)).path,
+    )).asset;
+    await store.importImage((await picture('c.png', width: 32)).path);
+    final d = (await store.importImage(
+      (await picture('d.png', width: 33)).path,
+    )).asset;
+    await store.editTags([a.id, b.id], add: [hidden]);
+    await store.archive([d.id], true);
+    expect(await store.viewCounts(), {'all': 3, 'untagged': 1, 'archived': 1});
+    // All images leaves out images hidden by an excluded tag.
+    await store.setTagExcludedFromAll(hidden, true);
+    expect(await store.viewCounts(), {'all': 1, 'untagged': 1, 'archived': 1});
+  });
+
   test('stars are independent of tags and combine with tag views', () async {
     final store = await create();
     final tag = await store.saveTag(name: 'env');

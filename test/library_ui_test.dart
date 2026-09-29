@@ -139,7 +139,7 @@ void main() {
           find.byType(CircularProgressIndicator).evaluate().isEmpty,
     );
     expect(find.byType(Chip), findsOneWidget);
-    await tester.tap(find.text('Untagged'));
+    await tester.tap(find.text('Untagged (0)'));
     await _until(
       tester,
       () => find.text('No images match this filter').evaluate().isNotEmpty,

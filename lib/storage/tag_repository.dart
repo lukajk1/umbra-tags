@@ -140,6 +140,17 @@ class TagRepository {
     ]);
   }
 
+  /// Image counts for the built-in views, matching what each view lists:
+  /// All images leaves out images hidden by excluded tags.
+  Map<String, int> viewCounts() {
+    int count(Map args) => assets(args).length;
+    return {
+      'all': count({'excludeHidden': true}),
+      'untagged': count({'untagged': true}),
+      'archived': count({'archived': true}),
+    };
+  }
+
   List<Map<String, Object?>> assets(Map args) {
     final tagId = args['tagId'] as String?;
     final excludeHidden = args['excludeHidden'] == true && tagId == null;

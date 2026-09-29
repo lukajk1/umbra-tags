@@ -196,8 +196,11 @@ class _GalleryPageState extends State<GalleryPage>
   bool _untagged = false;
   // Starred-only filter; combines with whichever view is open.
   bool _starredOnly = false;
+  // A status message that names one image; clicking it reveals the image.
+  ({String text, String assetId})? _statusLink;
   String? _tagFilter;
   List<LibraryTag> _tags = [];
+  Map<LibraryView, int> _viewCounts = const {};
   List<LibraryAsset> get _selection => _selectedPaths
       .map((path) => _assetsByPath[path])
       .whereType<LibraryAsset>()
@@ -706,10 +709,13 @@ class _GalleryPageState extends State<GalleryPage>
         _showNewestImports();
       }
       if (mounted) {
-        setState(
-          () => _status =
-              '${result.duplicate ? 'Already in' : 'Received in'} ${store.name}: ${result.asset.originalFilename}',
-        );
+        final text =
+            '${result.duplicate ? 'Already in' : 'Received in'} ${store.name}: ${result.asset.originalFilename}';
+        setState(() {
+          _status = text;
+          // Only images in the open library can be shown in the gallery.
+          _statusLink = current ? (text: text, assetId: result.asset.id) : null;
+        });
       }
       return <String, Object?>{
         'assetId': result.asset.id,
@@ -931,6 +937,7 @@ class _GalleryPageState extends State<GalleryPage>
   Future<void> _reload() async {
     if (_closingWindow) return;
     final tags = await _library!.tags();
+    final counts = await _library!.viewCounts();
     if (_tagFilter != null && !tags.any((tag) => tag.id == _tagFilter)) {
       _tagFilter = null;
     }
@@ -945,6 +952,11 @@ class _GalleryPageState extends State<GalleryPage>
     setState(() {
       _assets = assets;
       _tags = tags;
+      _viewCounts = {
+        LibraryView.all: counts['all']!,
+        LibraryView.untagged: counts['untagged']!,
+        LibraryView.archived: counts['archived']!,
+      };
       _imagePaths = assets
           .map((a) => _library!.absolutePath(a.relativePath))
           .toList();
@@ -961,6 +973,81 @@ class _GalleryPageState extends State<GalleryPage>
           '${assets.length} images${_showArchived ? ' archived' : ''}'
           '${assets.any((a) => a.missing) ? ' · ${assets.where((a) => a.missing).length} missing' : ''}';
     });
+  }
+
+  String? _pathOfAsset(String assetId) {
+    for (final entry in _assetsByPath.entries) {
+      if (entry.value.id == assetId) return entry.key;
+    }
+    return null;
+  }
+
+  /// Selects an image and scrolls the gallery to it. When the open view does
+  /// not include it, switches to All images (or Archived), or, if an
+  /// excluded tag hides it from All images, to one of its tags.
+  void _revealAsset(String assetId) => _run(() async {
+    final library = _library;
+    if (library == null) return;
+    var path = _pathOfAsset(assetId);
+    if (path == null) {
+      final archived = (await library.assets(
+        archived: true,
+      )).any((asset) => asset.id == assetId);
+      final active = archived
+          ? null
+          : (await library.assets()).where((a) => a.id == assetId).firstOrNull;
+      if (!archived && active == null) {
+        throw LibraryException('This image is no longer in the library.');
+      }
+      _rememberScrollPosition();
+      _pendingScrollOffset = null;
+      _showArchived = archived;
+      _untagged = false;
+      _tagFilter = null;
+      _starredOnly = false;
+      await _reload();
+      path = _pathOfAsset(assetId);
+      if (path == null && active != null && active.tagIds.isNotEmpty) {
+        _tagFilter = active.tagIds.first;
+        await _reload();
+        path = _pathOfAsset(assetId);
+      }
+      if (path == null) return;
+    }
+    final target = path;
+    setState(() {
+      _selectedPaths
+        ..clear()
+        ..add(target);
+      _selectionAnchor = target;
+    });
+    await _scrollToPath(target);
+  });
+
+  /// Scrolls until [path]'s tile is built, then brings it into view. Tiles
+  /// are built lazily, so first jump near its proportional position.
+  Future<void> _scrollToPath(String path) async {
+    final index = _imagePaths.indexOf(path);
+    if (index < 0) return;
+    for (var attempt = 0; attempt < 6; attempt++) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+      final tile = _tileKeys[path]?.currentContext;
+      if (tile != null && tile.mounted) {
+        await Scrollable.ensureVisible(
+          tile,
+          alignment: 0.3,
+          duration: const Duration(milliseconds: 200),
+        );
+        return;
+      }
+      if (!_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      final fraction = _imagePaths.length > 1
+          ? index / (_imagePaths.length - 1)
+          : 0.0;
+      position.jumpTo(position.maxScrollExtent * fraction);
+    }
   }
 
   /// The images a star action on [path] affects: the selection when [path]
@@ -2132,12 +2219,40 @@ class _GalleryPageState extends State<GalleryPage>
                     _library?.name ?? 'Umbra Tags',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  Text(
-                    _status,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white60, fontSize: 12),
-                  ),
+                  // Another status replaces the text, which drops the link.
+                  if (_statusLink case final link? when link.text == _status)
+                    Tooltip(
+                      message: 'Show in gallery',
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: _busy
+                              ? null
+                              : () => _revealAsset(link.assetId),
+                          child: Text(
+                            _status,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              decoration: TextDecoration.underline,
+                              decorationColor: Colors.white38,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Text(
+                      _status,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -2217,6 +2332,7 @@ class _GalleryPageState extends State<GalleryPage>
               children: [
                 TagSidebar(
                   tags: _tags,
+                  viewCounts: _viewCounts,
                   view: _showArchived
                       ? LibraryView.archived
                       : _untagged
