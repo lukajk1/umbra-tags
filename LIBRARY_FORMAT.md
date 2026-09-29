@@ -11,6 +11,7 @@ media/<id-prefix>/<id>.<ext>
 cache/thumbnails/<id>-<sha256>-v2.jpg
 cache/previews/          # reserved, rebuildable
 staging/                # recoverable import journals and temporary copies
+  trash/<id>/<name>      # deleted media awaiting the Recycle Bin
 backups/                # metadata-only SQLite snapshots
 .umbra.lock              # persistent file used for an OS-held writer lock
 ```
@@ -63,7 +64,9 @@ ordinary file and is never embedded in SQLite. Media is immutable in this versio
 
 ## Import and recovery
 
-1. Copy the source to `staging/<UUID>.part`. Source files are never moved or deleted.
+1. Copy the source to `staging/<UUID>.part`. The library never moves or deletes
+   source files; the desktop app separately sends a source to the Recycle Bin once
+   its import has committed.
 2. Hash and decode the copy. Reject unsupported/undecodable images. The current import
    UI supports JPEG, PNG, GIF, WebP and BMP. Videos and editing are not implemented.
 3. Exact duplicates return the existing asset; if its media is missing, restore that
@@ -82,13 +85,16 @@ or filesystem failure. SQLite uses DELETE journaling and FULL synchronous mode.
 
 ## Cache, missing files, backups
 
-Permanent deletion writes a flushed `staging/delete-<UUID>.json` journal with the
-asset IDs, relative media paths and content hashes before removing library media
-and current thumbnails. Catalog deletion and cascading tag/prediction removal happen
-in one transaction. Source files outside the library and tag definitions are kept.
-On reopen, import recovery runs first, then unfinished deletions are completed.
+Deletion writes a flushed `staging/delete-<UUID>.json` journal with the asset IDs,
+relative media paths, content hashes and original filenames, then moves library media
+to `staging/trash/<asset ID>/<original filename>` and removes current thumbnails.
+Catalog deletion and cascading tag/prediction removal happen in one transaction.
+Source files outside the library and tag definitions are kept. The desktop app then
+sends trashed media to the Windows Recycle Bin, retrying on the next open if it could
+not. On reopen, import recovery runs first, then unfinished deletions are completed.
 A filesystem error can leave a deletion pending until the library is reopened;
-its journal is retained. There is no undo or recycle-bin integration.
+its journal is retained. The app offers undo by delaying deletion for a few seconds;
+once deleted, an image's catalog record and tags are not restorable from the bin.
 
 Thumbnail requests are lazy, serialized in a worker isolate, and produce JPEGs with a
 1280-pixel longest edge (JPEG quality 92), without enlarging smaller originals. The gallery uses a bounded map of requests and Flutter's image

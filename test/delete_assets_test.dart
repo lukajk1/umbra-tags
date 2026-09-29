@@ -54,6 +54,26 @@ void main() {
     await store.deleteAssets([asset.id]);
     expect(await store.assets(archived: true), isEmpty);
   });
+  test(
+    'deleted media waits in the trash folder under its original name',
+    () async {
+      final asset = (await store.importImage(source.path)).asset;
+      final media = File('${store.root}/${asset.relativePath}');
+      final bytes = await media.readAsBytes();
+      await store.deleteAssets([asset.id]);
+      expect(await media.exists(), isFalse);
+      final trashed = await store.trashFiles();
+      expect(trashed, hasLength(1));
+      expect(
+        trashed.single.replaceAll(r'\', '/'),
+        endsWith('/staging/trash/${asset.id}/source.png'),
+      );
+      expect(await File(trashed.single).readAsBytes(), bytes);
+      await store.purgeTrash();
+      expect(await store.trashFiles(), isEmpty);
+    },
+  );
+
   test('reopening completes an interrupted deletion', () async {
     final asset = (await store.importImage(source.path)).asset;
     final root = store.root;

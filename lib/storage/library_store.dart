@@ -221,8 +221,20 @@ class LibraryStore {
     await _call('star', {'ids': ids, 'starred': starred});
   }
 
+  /// Removes images from the library. Their media files move to
+  /// `staging/trash/` under their original names, for the caller to send to
+  /// the Recycle Bin ([trashFiles]) or discard ([purgeTrash]).
   Future<void> deleteAssets(List<String> ids) async {
     await _call('delete', ids);
+  }
+
+  /// Absolute paths of media files waiting in the library's trash folder.
+  Future<List<String>> trashFiles() async =>
+      (await _call('trashFiles') as List).cast<String>();
+
+  /// Permanently deletes everything in the library's trash folder.
+  Future<void> purgeTrash() async {
+    await _call('purgeTrash');
   }
 
   Future<String> backup() async => await _call('backup') as String;
@@ -615,6 +627,12 @@ class _LibraryEngine {
       case 'delete':
         _deleteAssets((args as List).cast<String>());
         return null;
+      case 'trashFiles':
+        return _trashFiles();
+      case 'purgeTrash':
+        final trash = Directory(path('staging/trash'));
+        if (trash.existsSync()) trash.deleteSync(recursive: true);
+        return null;
       case 'backup':
         final relative = 'backups/catalog-$now-${const Uuid().v4()}.sqlite';
         db.execute('VACUUM INTO ?', [path(relative)]);
@@ -849,7 +867,7 @@ class _LibraryEngine {
     final records = <Map<String, Object?>>[];
     for (final id in ids.toSet()) {
       final rows = db.select(
-        'SELECT id, relative_path, sha256 FROM assets WHERE id = ?',
+        'SELECT id, relative_path, sha256, original_filename FROM assets WHERE id = ?',
         [id],
       );
       if (rows.isNotEmpty) records.add(Map<String, Object?>.from(rows.single));
@@ -901,15 +919,25 @@ class _LibraryEngine {
       }
     }
     for (final row in records) {
+      final media = row['relative_path'] as String;
       for (final relative in [
-        row['relative_path'] as String,
+        media,
         'cache/thumbnails/${row['id']}-${row['sha256']}-v2.jpg',
       ]) {
         final file = File(path(relative));
         if (file.existsSync()) {
           for (var attempt = 0; ; attempt++) {
             try {
-              file.deleteSync();
+              if (relative == media) {
+                // Media goes to the trash folder, named as originally
+                // imported, so it can be recovered from the Recycle Bin.
+                final trashed = File(_trashPathFor(row));
+                trashed.parent.createSync(recursive: true);
+                if (trashed.existsSync()) trashed.deleteSync();
+                file.renameSync(trashed.path);
+              } else {
+                file.deleteSync();
+              }
               break;
             } on FileSystemException catch (error) {
               if (!Platform.isWindows ||
@@ -936,6 +964,38 @@ class _LibraryEngine {
       rethrow;
     }
     journal.deleteSync();
+  }
+
+  /// `staging/trash/<id>/<original filename>`, made safe for Windows.
+  String _trashPathFor(Map row) {
+    final id = row['id'] as String;
+    final extension = p.extension(row['relative_path'] as String);
+    var name = p
+        .basename((row['original_filename'] as String?) ?? '')
+        .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '_')
+        .trim();
+    if (name.isEmpty || name.startsWith('.')) name = '$id$extension';
+    if (p.extension(name).toLowerCase() != extension.toLowerCase()) {
+      name = '$name$extension';
+    }
+    return path('staging/trash/$id/$name');
+  }
+
+  /// Lists trashed media files, removing any emptied per-image folders.
+  List<String> _trashFiles() {
+    final trash = Directory(path('staging/trash'));
+    if (!trash.existsSync()) return const [];
+    final files = <String>[];
+    for (final folder in trash.listSync(followLinks: false)) {
+      if (folder is! Directory) continue;
+      final contents = folder.listSync(followLinks: false);
+      if (contents.isEmpty) {
+        folder.deleteSync();
+        continue;
+      }
+      files.addAll(contents.whereType<File>().map((f) => f.path));
+    }
+    return files;
   }
 
   void _recover() {

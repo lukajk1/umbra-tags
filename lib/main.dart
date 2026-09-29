@@ -172,6 +172,9 @@ class _GalleryPageState extends State<GalleryPage>
   // so their tap callback runs only after the double-click window, by which
   // time a quick Ctrl-click has usually released the key.
   bool _toggleOnTap = false;
+  // Pressing an image that is part of a multi-selection keeps the selection
+  // (it may be dragged out); releasing without a drag then selects just it.
+  String? _collapseOnRelease;
   // Shift at pointer down selects a range, in gallery order, from the anchor:
   // the image last clicked without Shift.
   bool _rangeOnTap = false;
@@ -196,6 +199,11 @@ class _GalleryPageState extends State<GalleryPage>
   bool _untagged = false;
   // Starred-only filter; combines with whichever view is open.
   bool _starredOnly = false;
+  // Deleted images stay in the catalog for a short undo window, hidden from
+  // the gallery, then are removed and their files sent to the Recycle Bin.
+  static const _undoWindow = Duration(seconds: 5);
+  ({Set<String> ids, Timer timer})? _pendingDelete;
+  final Set<String> _hiddenIds = {};
   // A status message that names one image; clicking it reveals the image.
   ({String text, String assetId})? _statusLink;
   String? _tagFilter;
@@ -914,6 +922,7 @@ class _GalleryPageState extends State<GalleryPage>
       await library.close();
       return;
     }
+    await _commitPendingDelete();
     _rememberScrollPosition();
     await _stopSimilarity();
     await _library?.close();
@@ -922,6 +931,8 @@ class _GalleryPageState extends State<GalleryPage>
       return;
     }
     _library = library;
+    // Finish sending anything a previous session left in the trash folder.
+    unawaited(_emptyLibraryTrash(library).catchError((_) {}));
     _startSimilarity();
     _lastLibraryPath = library.root;
     _knownLibraries[library.id] = {'name': library.name, 'path': library.root};
@@ -941,13 +952,13 @@ class _GalleryPageState extends State<GalleryPage>
     if (_tagFilter != null && !tags.any((tag) => tag.id == _tagFilter)) {
       _tagFilter = null;
     }
-    final assets = await _library!.assets(
+    final assets = (await _library!.assets(
       archived: _showArchived,
       untagged: _untagged,
       tagId: _tagFilter,
       excludeHidden: !_showArchived && !_untagged,
       starredOnly: _starredOnly,
-    );
+    )).where((asset) => !_hiddenIds.contains(asset.id)).toList();
     if (!mounted) return;
     setState(() {
       _assets = assets;
@@ -1182,6 +1193,7 @@ class _GalleryPageState extends State<GalleryPage>
   });
 
   void _closeLibrary() => _run(() async {
+    await _commitPendingDelete();
     _rememberScrollPosition();
     await _stopSimilarity();
     await _library?.close();
@@ -1640,7 +1652,8 @@ class _GalleryPageState extends State<GalleryPage>
         builder: (context) => AlertDialog(
           title: Text('Delete ${selected.length} images?'),
           content: const Text(
-            'Permanently delete these images and their tag assignments from this library. Original files outside the library are kept. This cannot be undone.',
+            'Remove these images and their tag assignments from this library. '
+            'Their files go to the Recycle Bin. You can undo for a few seconds.',
           ),
           actions: [
             TextButton(
@@ -1657,31 +1670,98 @@ class _GalleryPageState extends State<GalleryPage>
       );
       if (confirmed != true) return;
     }
+    // One undo window at a time: an earlier pending delete completes now.
+    await _commitPendingDelete();
     final ids = selected.map((asset) => asset.id).toSet();
-    // Detach file-backed images before deletion: Windows can retain their file
-    // mappings until the preview, thumbnail and cached codec are disposed.
-    setState(() {
-      _selectedPaths.clear();
-      _assets.removeWhere((asset) => ids.contains(asset.id));
-      _imagePaths.removeWhere((path) => ids.contains(_assetsByPath[path]?.id));
+    _hiddenIds.addAll(ids);
+    _pendingDelete = (
+      ids: ids,
+      timer: Timer(_undoWindow, _commitPendingDelete),
+    );
+    setState(() => _selectedPaths.clear());
+    await _reload();
+    if (!mounted) return;
+    final label =
+        '${ids.length} ${ids.length == 1 ? 'image' : 'images'} '
+        'moved to the Recycle Bin';
+    setState(() => _status = label);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(label),
+          duration: _undoWindow,
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () => _undoDelete(ids),
+          ),
+        ),
+      );
+    _galleryFocus.requestFocus();
+  });
+
+  void _undoDelete(Set<String> ids) {
+    final pending = _pendingDelete;
+    if (pending == null || !identical(pending.ids, ids)) return;
+    pending.timer.cancel();
+    _pendingDelete = null;
+    _hiddenIds.removeAll(ids);
+    _run(() async {
+      await _reload();
+      if (mounted) {
+        setState(
+          () => _status =
+              'Restored ${ids.length} ${ids.length == 1 ? 'image' : 'images'}',
+        );
+      }
     });
-    await WidgetsBinding.instance.endOfFrame;
+  }
+
+  /// Completes the pending delete, if any: removes the images from the
+  /// library and sends their files to the Recycle Bin.
+  Future<void> _commitPendingDelete() async {
+    final pending = _pendingDelete;
+    if (pending == null) return;
+    _pendingDelete = null;
+    pending.timer.cancel();
+    final library = _library;
+    if (library == null) return;
+    // Detach file-backed images first: Windows can retain file mappings until
+    // the preview, thumbnail and cached codec are disposed.
     PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
     try {
-      await _library!.deleteAssets(ids.toList());
+      await library.deleteAssets(pending.ids.toList());
+      await _emptyLibraryTrash(library);
+    } catch (error) {
+      if (mounted) setState(() => _status = 'Delete failed: $error');
     } finally {
+      _hiddenIds.removeAll(pending.ids);
       _thumbnails.clear();
-      await _reload();
+      if (mounted && !_closingWindow && identical(library, _library)) {
+        await _reload();
+      }
     }
-    if (mounted) {
-      setState(
-        () => _status =
-            '${selected.length} ${selected.length == 1 ? 'image' : 'images'} deleted',
-      );
-      _galleryFocus.requestFocus();
+  }
+
+  /// Sends the library's trashed media to the Recycle Bin. Where there is no
+  /// Recycle Bin integration they are deleted; if the user declines a
+  /// permanent-deletion prompt they stay for the next attempt.
+  Future<void> _emptyLibraryTrash(LibraryStore library) async {
+    final files = await library.trashFiles();
+    if (files.isEmpty) return;
+    try {
+      await _shellChannel.invokeMethod<bool>('recycleFiles', files);
+    } on MissingPluginException {
+      await library.purgeTrash();
+    } on PlatformException catch (error) {
+      if (mounted) {
+        setState(() => _status = 'Recycle Bin: ${error.message}');
+      }
     }
-  });
+    await library.trashFiles(); // Clears the emptied folders.
+  }
+
   void _openPreviewExternally() {
     if (_selectedPaths.isNotEmpty) _openImageExternally(_selectedPaths.first);
   }
@@ -1819,6 +1899,7 @@ class _GalleryPageState extends State<GalleryPage>
     _standbyEmbedder = null;
     _tagSuggester = null;
     _classifier = null;
+    await step('pending delete', _commitPendingDelete);
     await step('library', () async {
       await _library?.close();
     });
@@ -2428,8 +2509,6 @@ class _GalleryPageState extends State<GalleryPage>
                                     selected: _selectedPaths.contains(
                                       _imagePaths[index],
                                     ),
-                                    onTap: () =>
-                                        _selectImage(_imagePaths[index]),
                                     onDoubleTap: _busy
                                         ? null
                                         : () => _openImageExternally(
@@ -2503,8 +2582,6 @@ class _GalleryPageState extends State<GalleryPage>
                                     selected: _selectedPaths.contains(
                                       _imagePaths[index],
                                     ),
-                                    onTap: () =>
-                                        _selectImage(_imagePaths[index]),
                                     onDoubleTap: _busy
                                         ? null
                                         : () => _openImageExternally(
@@ -2588,12 +2665,36 @@ class _GalleryPageState extends State<GalleryPage>
                                               keys.isControlPressed ||
                                               keys.isMetaPressed;
                                           _rangeOnTap = keys.isShiftPressed;
-                                          // Left button only, not the scroll wheel.
+                                          _collapseOnRelease = null;
                                           if (_busy ||
-                                              e.kind !=
-                                                  PointerDeviceKind.mouse ||
-                                              e.buttons !=
-                                                  kPrimaryMouseButton) {
+                                              e.buttons != kPrimaryButton) {
+                                            return;
+                                          }
+                                          // Select on press, like Explorer:
+                                          // tiles also wait out the double-
+                                          // click window before a tap fires,
+                                          // and Delete in that gap acted on
+                                          // the previous selection.
+                                          final pressed = keys.isAltPressed
+                                              ? null
+                                              : _tileAt(e.localPosition);
+                                          if (pressed != null) {
+                                            if (!_toggleOnTap &&
+                                                !_rangeOnTap &&
+                                                _selectedPaths.length > 1 &&
+                                                _selectedPaths.contains(
+                                                  pressed,
+                                                )) {
+                                              _collapseOnRelease = pressed;
+                                            } else {
+                                              _selectImage(pressed);
+                                            }
+                                          }
+                                          // Marquee and file drags: left mouse
+                                          // button only.
+                                          if (e.kind !=
+                                              PointerDeviceKind.mouse) {
+                                            _galleryFocus.requestFocus();
                                             return;
                                           }
                                           _galleryFocus.requestFocus();
@@ -2624,16 +2725,25 @@ class _GalleryPageState extends State<GalleryPage>
                                             final path = _fileDragPath!;
                                             _fileDragPath = _fileDragOrigin =
                                                 null;
+                                            _collapseOnRelease = null;
                                             _startFileDrag(path);
                                           }
                                         },
-                                        onPointerUp: (_) => setState(() {
-                                          _dragStart = null;
-                                          _dragCurrent = null;
-                                          _fileDragPath = _fileDragOrigin =
-                                              null;
-                                        }),
+                                        onPointerUp: (_) {
+                                          final collapse = _collapseOnRelease;
+                                          _collapseOnRelease = null;
+                                          setState(() {
+                                            _dragStart = null;
+                                            _dragCurrent = null;
+                                            _fileDragPath = _fileDragOrigin =
+                                                null;
+                                          });
+                                          if (collapse != null) {
+                                            _selectImage(collapse);
+                                          }
+                                        },
                                         onPointerCancel: (_) => setState(() {
+                                          _collapseOnRelease = null;
                                           _dragStart = null;
                                           _dragCurrent = null;
                                           _fileDragPath = _fileDragOrigin =
@@ -2766,7 +2876,7 @@ class GalleryTile extends StatelessWidget {
     required this.tileSize,
     required this.layout,
     required this.selected,
-    required this.onTap,
+    this.onTap,
     this.onDoubleTap,
     this.onContextSelect,
     this.onCopyImage,
@@ -2793,7 +2903,7 @@ class GalleryTile extends StatelessWidget {
   final LayoutMode layout;
   final bool selected, archived;
   final bool Function()? canRefine;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final VoidCallback? onDoubleTap,
       onContextSelect,
       onCopyImage,

@@ -79,8 +79,11 @@ See `../umbra-tags-ml/README.md` for setup, the adapter protocol and code exampl
 ## Tagging and deletion
 
 Select a gallery image and press **Delete**, or right-click it and choose **Delete**,
-to permanently remove its library copy, thumbnail and metadata. Multiple selected
-images require confirmation; a single image is deleted immediately. Right-clicking
+to remove it from the library. It disappears at once and a toast offers **Undo** for
+5 seconds; after that its tags and metadata are removed and its file goes to the
+Recycle Bin under its original name. Multiple selected images require confirmation
+first. Clicking an image selects it immediately (on press), so Delete always acts on
+the selection you see. Right-clicking
 an unselected image selects just that image. External source files and tag definitions
 are kept. Delete only acts while the gallery has keyboard focus, not while editing text.
 
