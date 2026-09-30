@@ -561,9 +561,14 @@ class BatchTagsDialog extends StatefulWidget {
     this.onSuggest,
     this.thumbnail,
     this.onApplyReviewed,
+    this.onCreateTag,
   });
   final List<LibraryTag> tags;
   final List<LibraryAsset> assets;
+
+  /// Creates a tag (top level when the parent is null) and returns its ID.
+  /// New tags are ticked for the images being edited.
+  final Future<String> Function(String name, String? parentId)? onCreateTag;
   final Future<void> Function(List<String> add, List<String> remove) onSave;
   final Future<List<TagSuggestion>> Function(LibraryAsset)? onSuggest;
   final Future<String?> Function(LibraryAsset)? thumbnail;
@@ -578,6 +583,9 @@ class BatchTagsDialog extends StatefulWidget {
 }
 
 class _BatchTagsDialogState extends State<BatchTagsDialog> {
+  // A local copy so tags created here appear straight away.
+  late final List<LibraryTag> _tags = [...widget.tags];
+  final _searchField = TextEditingController();
   final Map<String, bool> _changes = {};
   final Map<String, Set<String>> _accepted = {};
   String _search = '';
@@ -591,6 +599,49 @@ class _BatchTagsDialogState extends State<BatchTagsDialog> {
         : count == widget.assets.length
         ? true
         : null;
+  }
+
+  @override
+  void dispose() {
+    _searchField.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createTag({String? parentId}) async {
+    final create = widget.onCreateTag;
+    if (create == null) return;
+    String? created;
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => TagDetailsDialog(
+        tags: _tags,
+        parentId: parentId,
+        onSave: (name, parent) async {
+          final id = await create(name, parent);
+          created = id;
+          _tags
+            ..add(
+              LibraryTag.fromMap({
+                'id': id,
+                'name': name.trim(),
+                'parent_id': parent,
+              }),
+            )
+            ..sort(
+              (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+            );
+        },
+      ),
+    );
+    final id = created;
+    if (id == null || !mounted) return;
+    setState(() {
+      _changes[id] = true;
+      // Clear the search so the new tag is visible.
+      _searchField.clear();
+      _search = '';
+    });
   }
 
   Future<void> _save() async {
@@ -628,10 +679,11 @@ class _BatchTagsDialogState extends State<BatchTagsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final rows = tagTree(widget.tags)
+    final rows = tagTree(_tags)
         .where((r) => r.tag.name.toLowerCase().contains(_search.toLowerCase()))
         .toList();
     final guides = tagTreeGuides([for (final row in rows) row.depth]);
+    final canCreate = widget.onCreateTag != null && !_saving;
     final canSuggest =
         widget.onSuggest != null &&
         widget.thumbnail != null &&
@@ -642,12 +694,27 @@ class _BatchTagsDialogState extends State<BatchTagsDialog> {
           'A dash means only some images have this tag. Unchanged tags are preserved.',
           style: TextStyle(color: Colors.white60),
         ),
-        TextField(
-          onChanged: (value) => setState(() => _search = value),
-          decoration: const InputDecoration(
-            hintText: 'Find a tag',
-            prefixIcon: Icon(Icons.search),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _searchField,
+                onChanged: (value) => setState(() => _search = value),
+                decoration: const InputDecoration(
+                  hintText: 'Find a tag',
+                  prefixIcon: Icon(Icons.search),
+                ),
+              ),
+            ),
+            if (widget.onCreateTag != null) ...[
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: canCreate ? _createTag : null,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('New tag'),
+              ),
+            ],
+          ],
         ),
         Expanded(
           child: rows.isEmpty
@@ -673,6 +740,20 @@ class _BatchTagsDialogState extends State<BatchTagsDialog> {
                         dense: true,
                         controlAffinity: ListTileControlAffinity.leading,
                         tristate: true,
+                        secondary: widget.onCreateTag == null
+                            ? null
+                            : IconButton(
+                                tooltip: 'Add child tag to “${row.tag.name}”',
+                                visualDensity: VisualDensity.compact,
+                                icon: const Icon(
+                                  Icons.add,
+                                  size: 18,
+                                  color: Colors.white38,
+                                ),
+                                onPressed: canCreate
+                                    ? () => _createTag(parentId: row.tag.id)
+                                    : null,
+                              ),
                         value: _value(row.tag.id),
                         onChanged: _saving
                             ? null
@@ -700,7 +781,7 @@ class _BatchTagsDialogState extends State<BatchTagsDialog> {
                 child: canSuggest
                     ? DefaultTabController(
                         length: 2,
-                        initialIndex: widget.tags.isEmpty ? 1 : 0,
+                        initialIndex: _tags.isEmpty ? 1 : 0,
                         child: Column(
                           children: [
                             const TabBar(
@@ -716,7 +797,7 @@ class _BatchTagsDialogState extends State<BatchTagsDialog> {
                                   manual,
                                   TagSuggestionsPanel(
                                     assets: widget.assets,
-                                    tags: widget.tags,
+                                    tags: _tags,
                                     onSuggest: widget.onSuggest!,
                                     thumbnail: widget.thumbnail!,
                                     accepted: _accepted,

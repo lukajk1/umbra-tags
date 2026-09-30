@@ -1406,6 +1406,8 @@ class _GalleryPageState extends State<GalleryPage>
       barrierDismissible: false,
       builder: (_) => BatchTagsDialog(
         tags: _tags,
+        onCreateTag: (name, parentId) =>
+            _library!.saveTag(name: name, parentId: parentId),
         assets: selected,
         onSuggest: _suggestTags,
         thumbnail: (asset) => _library!.thumbnail(asset),
