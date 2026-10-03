@@ -769,6 +769,13 @@ class _GalleryPageState extends State<GalleryPage>
     super.initState();
     windowManager.addListener(this);
     tray.trayManager.addListener(this);
+    // Windows ending the session, or an installer closing the app, must quit
+    // even when closing normally minimizes to the tray.
+    const MethodChannel('umbra_tags/session').setMethodCallHandler((
+      call,
+    ) async {
+      if (call.method == 'endSession') _quit();
+    });
     _scrollController.addListener(_rememberScrollPosition);
     _restoreSession();
   }

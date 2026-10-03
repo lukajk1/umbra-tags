@@ -11,6 +11,7 @@ add_executable(${BINARY_NAME} WIN32
   "file_drag.cpp"
   "image_clipboard.cpp"
   "shell_open.cpp"
+  "session_end.cpp"
   "main.cpp"
   "utils.cpp"
   "win32_window.cpp"

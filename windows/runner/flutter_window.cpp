@@ -5,6 +5,7 @@
 #include "flutter/generated_plugin_registrant.h"
 #include "file_drag.h"
 #include "image_clipboard.h"
+#include "session_end.h"
 #include "shell_open.h"
 #include "shutdown_trace.h"
 
@@ -33,6 +34,7 @@ bool FlutterWindow::OnCreate() {
                                 GetHandle());
   RegisterShellOpenChannel(flutter_controller_->engine()->messenger(),
                            GetHandle());
+  RegisterSessionEndChannel(flutter_controller_->engine()->messenger());
   RegisterFileDragChannel(flutter_controller_->engine()->messenger(),
                           flutter_controller_->view()->GetNativeWindow());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
@@ -66,6 +68,12 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
   if (message == WM_CLOSE) TraceNativeShutdown("WM_CLOSE received");
+  // Windows sign-out/shutdown, or an installer closing the app through the
+  // Restart Manager: quit for real, even when closing hides to the tray.
+  if (message == WM_QUERYENDSESSION || (message == WM_ENDSESSION && wparam)) {
+    TraceNativeShutdown("session ending");
+    NotifySessionEnding();
+  }
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =
