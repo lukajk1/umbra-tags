@@ -3,6 +3,16 @@ import 'package:flutter/material.dart';
 import '../storage/tag_repository.dart';
 import 'tag_widgets.dart';
 
+/// Gallery display order.
+enum GalleryOrder {
+  newest('Newest first'),
+  oldest('Oldest first'),
+  random('Random');
+
+  const GalleryOrder(this.label);
+  final String label;
+}
+
 /// A strip above the gallery naming the open view, e.g.
 /// "All images › magic rpg › env". Earlier crumbs navigate to that view.
 class ViewBreadcrumbs extends StatelessWidget {
@@ -15,6 +25,8 @@ class ViewBreadcrumbs extends StatelessWidget {
     required this.onTag,
     this.starredOnly = false,
     this.onToggleStarred,
+    this.order = GalleryOrder.newest,
+    this.onOrder,
   });
 
   final List<LibraryTag> tags;
@@ -28,6 +40,11 @@ class ViewBreadcrumbs extends StatelessWidget {
   /// The starred-only filter, shown as a toggle at the end of the strip.
   final bool starredOnly;
   final VoidCallback? onToggleStarred;
+
+  /// Display order, chosen from a dropdown before the Starred toggle.
+  /// Choosing Random again reshuffles.
+  final GalleryOrder order;
+  final ValueChanged<GalleryOrder>? onOrder;
 
   @override
   Widget build(BuildContext context) {
@@ -78,11 +95,53 @@ class ViewBreadcrumbs extends StatelessWidget {
               ),
             ),
           ),
+          _OrderMenu(order: order, onSelected: onOrder),
+          const SizedBox(width: 4),
           _StarredToggle(on: starredOnly, onTap: onToggleStarred),
         ],
       ),
     );
   }
+}
+
+class _OrderMenu extends StatelessWidget {
+  const _OrderMenu({required this.order, this.onSelected});
+  final GalleryOrder order;
+  final ValueChanged<GalleryOrder>? onSelected;
+
+  @override
+  Widget build(BuildContext context) => PopupMenuButton<GalleryOrder>(
+    tooltip: 'Display order',
+    enabled: onSelected != null,
+    initialValue: order,
+    onSelected: onSelected,
+    itemBuilder: (_) => [
+      for (final option in GalleryOrder.values)
+        PopupMenuItem(
+          value: option,
+          child: Text(
+            option == GalleryOrder.random && order == GalleryOrder.random
+                ? 'Shuffle again'
+                : option.label,
+          ),
+        ),
+    ],
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.sort, size: 16, color: Colors.white54),
+          const SizedBox(width: 4),
+          Text(
+            order.label,
+            style: const TextStyle(fontSize: 13, color: Colors.white70),
+          ),
+          const Icon(Icons.arrow_drop_down, size: 18, color: Colors.white54),
+        ],
+      ),
+    ),
+  );
 }
 
 class _StarredToggle extends StatelessWidget {

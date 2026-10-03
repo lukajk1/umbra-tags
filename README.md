@@ -108,6 +108,10 @@ toggle at the right of the breadcrumb strip shows only starred images and
 combines with the open view, so a tag view plus Starred lists images that are both
 in that tag and starred. Stars need catalog v4; libraries upgrade on open.
 
+The order dropdown beside Starred shows images Newest first (by date added),
+Oldest first, or in Random order. Random stays stable while you tag or star;
+choose Random again to reshuffle. The choice is remembered between sessions.
+
 Drag an image without Alt to drop it, or the whole selection when it is part of
 one, into other applications as files (Explorer, chat apps, browser uploads).
 Drops always copy, so library files are never moved out. On Windows,

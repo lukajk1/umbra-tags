@@ -199,6 +199,10 @@ class _GalleryPageState extends State<GalleryPage>
   bool _untagged = false;
   // Starred-only filter; combines with whichever view is open.
   bool _starredOnly = false;
+  GalleryOrder _order = GalleryOrder.newest;
+  // Random order is a stable shuffle keyed by this seed, so reloads (after
+  // tagging, starring, imports) keep positions; choosing Random reshuffles.
+  int _shuffleSeed = DateTime.now().microsecondsSinceEpoch;
   // Deleted images stay in the catalog for a short undo window, hidden from
   // the gallery, then are removed and their files sent to the Recycle Bin.
   static const _undoWindow = Duration(seconds: 5);
@@ -714,7 +718,9 @@ class _GalleryPageState extends State<GalleryPage>
       );
       if (current) {
         await _reload();
-        _showNewestImports();
+        _showNewestImports(
+          reveal: store.absolutePath(result.asset.relativePath),
+        );
       }
       if (mounted) {
         final text =
@@ -807,6 +813,10 @@ class _GalleryPageState extends State<GalleryPage>
       }
       _reopenLastLibrary = data['reopenLastLibrary'] != false;
       _minimizeToTray = data['minimizeToTray'] == true;
+      _order = GalleryOrder.values.firstWhere(
+        (value) => value.name == data['galleryOrder'],
+        orElse: () => GalleryOrder.newest,
+      );
       _receiverEnabled = data['receiverEnabled'] != false;
       final port = data['receiverPort'];
       _receiverPort = port is int && port >= 1024 && port <= 65535
@@ -865,6 +875,7 @@ class _GalleryPageState extends State<GalleryPage>
       'startupModels': _startupModels.toList(),
       'reopenLastLibrary': _reopenLastLibrary,
       'minimizeToTray': _minimizeToTray,
+      'galleryOrder': _order.name,
       'receiverEnabled': _receiverEnabled,
       'receiverPort': _receiverPort,
       'tileSize': _tileSize,
@@ -959,6 +970,7 @@ class _GalleryPageState extends State<GalleryPage>
       excludeHidden: !_showArchived && !_untagged,
       starredOnly: _starredOnly,
     )).where((asset) => !_hiddenIds.contains(asset.id)).toList();
+    _applyOrder(assets);
     if (!mounted) return;
     setState(() {
       _assets = assets;
@@ -1119,7 +1131,7 @@ class _GalleryPageState extends State<GalleryPage>
 
   /// Scrolls to the top, where the newest imports are listed, optionally
   /// selecting them.
-  void _showNewestImports({Set<String>? select}) {
+  void _showNewestImports({Set<String>? select, String? reveal}) {
     if (!mounted) return;
     if (select != null && select.isNotEmpty) {
       setState(
@@ -1129,8 +1141,48 @@ class _GalleryPageState extends State<GalleryPage>
       );
     }
     _pendingScrollOffset = null;
-    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    // Newest first lists imports at the top; other orders place them
+    // elsewhere, so scroll to the first of them instead.
+    final targets = {...?select, ?reveal};
+    if (_order != GalleryOrder.newest && targets.isNotEmpty) {
+      unawaited(
+        _scrollToPath(
+          _imagePaths.firstWhere(targets.contains, orElse: () => ''),
+        ),
+      );
+    } else if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
   }
+
+  /// Orders [assets] in place. The catalog lists newest first.
+  void _applyOrder(List<LibraryAsset> assets) {
+    switch (_order) {
+      case GalleryOrder.newest:
+        break;
+      case GalleryOrder.oldest:
+        final reversed = assets.reversed.toList();
+        assets
+          ..clear()
+          ..addAll(reversed);
+      case GalleryOrder.random:
+        int rank(LibraryAsset asset) =>
+            Object.hash(_shuffleSeed, asset.id) & 0x3fffffff;
+        assets.sort((a, b) => rank(a).compareTo(rank(b)));
+    }
+  }
+
+  void _setOrder(GalleryOrder order) => _run(() async {
+    // Picking Random again reshuffles.
+    if (order == GalleryOrder.random) {
+      _shuffleSeed = DateTime.now().microsecondsSinceEpoch;
+    }
+    _order = order;
+    _persistSession();
+    await _reload();
+    _pendingScrollOffset = null;
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+  });
 
   Future<String?> _thumbnailFor(String path) {
     if (_thumbnails.length > 256) _thumbnails.remove(_thumbnails.keys.first);
@@ -2449,6 +2501,8 @@ class _GalleryPageState extends State<GalleryPage>
                             : (id) => _setFilter(LibraryView.all, id),
                         starredOnly: _starredOnly,
                         onToggleStarred: _busy ? null : _toggleStarredOnly,
+                        order: _order,
+                        onOrder: _busy ? null : _setOrder,
                       ),
                       Expanded(
                         child: GalleryDropTarget(
