@@ -214,6 +214,7 @@ class _TagSidebarState extends State<TagSidebar> {
     final rows = tagTree(widget.tags)
         .where((r) => r.tag.name.toLowerCase().contains(_search.toLowerCase()))
         .toList();
+    final guides = tagTreeGuides([for (final row in rows) row.depth]);
     return SizedBox(
       width: 220,
       child: ColoredBox(
@@ -333,53 +334,56 @@ class _TagSidebarState extends State<TagSidebar> {
                             maxSimultaneousDrags: widget.busy ? 0 : 1,
                             dragAnchorStrategy: pointerDragAnchorStrategy,
                             feedback: _TagDragFeedback(name: row.tag.name),
-                            child: ListTile(
-                              key: ValueKey('tag-filter-${row.tag.id}'),
-                              dense: true,
-                              contentPadding: EdgeInsets.only(
-                                left:
-                                    12 +
-                                    (row.depth * 12).clamp(0, 60).toDouble(),
-                              ),
-                              leading: row.tag.excludedFromAll
-                                  ? const Tooltip(
-                                      message: 'Excluded from All images',
-                                      child: Icon(
-                                        Icons.visibility_off_outlined,
-                                        size: 18,
-                                      ),
-                                    )
-                                  : const Icon(Icons.label_outline, size: 18),
-                              minLeadingWidth: 16,
-                              title: Tooltip(
-                                message: row.tag.name,
-                                child: Text.rich(
-                                  TextSpan(
-                                    text: row.tag.name,
-                                    children: [
-                                      TextSpan(
-                                        text: ' (${row.tag.assetCount})',
-                                        style: const TextStyle(
-                                          color: Colors.white54,
+                            // Tree guides line up with the 18px leading icon,
+                            // centred 12 + 9 px into the row.
+                            child: TagTreeIndent(
+                              continues: guides[index],
+                              step: 20,
+                              origin: 21,
+                              child: ListTile(
+                                key: ValueKey('tag-filter-${row.tag.id}'),
+                                dense: true,
+                                contentPadding: const EdgeInsets.only(left: 12),
+                                leading: row.tag.excludedFromAll
+                                    ? const Tooltip(
+                                        message: 'Excluded from All images',
+                                        child: Icon(
+                                          Icons.visibility_off_outlined,
+                                          size: 18,
                                         ),
-                                      ),
-                                    ],
+                                      )
+                                    : const Icon(Icons.label_outline, size: 18),
+                                minLeadingWidth: 16,
+                                title: Tooltip(
+                                  message: row.tag.name,
+                                  child: Text.rich(
+                                    TextSpan(
+                                      text: row.tag.name,
+                                      children: [
+                                        TextSpan(
+                                          text: ' (${row.tag.assetCount})',
+                                          style: const TextStyle(
+                                            color: Colors.white54,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                              selected: widget.selectedTag == row.tag.id,
-                              onTap: widget.busy
-                                  ? null
-                                  : () => widget.onSelect(row.tag.id),
-                              trailing: PopupMenuButton<String>(
-                                tooltip: 'Manage ${row.tag.name}',
-                                enabled: !widget.busy,
-                                icon: const Icon(Icons.more_vert, size: 18),
-                                onSelected: (action) =>
-                                    _tagAction(action, row.tag),
-                                itemBuilder: (_) => _menuItems(row.tag),
+                                selected: widget.selectedTag == row.tag.id,
+                                onTap: widget.busy
+                                    ? null
+                                    : () => widget.onSelect(row.tag.id),
+                                trailing: PopupMenuButton<String>(
+                                  tooltip: 'Manage ${row.tag.name}',
+                                  enabled: !widget.busy,
+                                  icon: const Icon(Icons.more_vert, size: 18),
+                                  onSelected: (action) =>
+                                      _tagAction(action, row.tag),
+                                  itemBuilder: (_) => _menuItems(row.tag),
+                                ),
                               ),
                             ),
                           ),
