@@ -1931,6 +1931,10 @@ class _GalleryPageState extends State<GalleryPage>
         SnackBar(
           content: Text(label),
           duration: _undoWindow,
+          // With an action, snack bars otherwise stay until dismissed.
+          persist: false,
+          behavior: SnackBarBehavior.floating,
+          width: 440,
           action: SnackBarAction(
             label: 'Undo',
             onPressed: () => _undoDelete(ids),
@@ -2793,6 +2797,90 @@ class _GalleryPageState extends State<GalleryPage>
     return true;
   }
 
+  /// Library name, status and indexing, shown at the foot of the sidebar
+  /// instead of a full-width bar.
+  Widget _statusFooter() {
+    const muted = TextStyle(color: AppColors.mist, fontSize: 12);
+    final link = _statusLink;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 8, 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              if (_busy) ...[
+                const SizedBox.square(
+                  dimension: 12,
+                  child: CircularProgressIndicator(strokeWidth: 1.5),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  _library?.name ?? 'Umbra Tags',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              if (_selectedPaths.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8, right: 8),
+                  child: Text(
+                    '${_selectedPaths.length} selected',
+                    style: muted,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          // Another status replaces the text, which drops the link.
+          if (link != null && link.text == _status)
+            Tooltip(
+              message: 'Show in gallery',
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: _busy ? null : () => _revealAsset(link.assetId),
+                  child: Text(
+                    _status,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: muted.copyWith(
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppColors.haze,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            Text(
+              _status,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: muted,
+            ),
+          if (_similarity != null) SimilarityStatus(controller: _similarity!),
+          if (_classifying)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: _cancelClassification
+                    ? null
+                    : () => setState(() => _cancelClassification = true),
+                child: Text(
+                  _cancelClassification ? 'Stopping…' : 'Cancel after image',
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _searchBox() => TextField(
     key: const ValueKey('text-search'),
     controller: _searchField,
@@ -2997,80 +3085,6 @@ class _GalleryPageState extends State<GalleryPage>
         ),
         titleSpacing: 0,
       ),
-      bottomNavigationBar: Container(
-        color: AppColors.darker,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            if (_busy) ...[
-              const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              const SizedBox(width: 12),
-            ],
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _library?.name ?? 'Umbra Tags',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  // Another status replaces the text, which drops the link.
-                  if (_statusLink case final link? when link.text == _status)
-                    Tooltip(
-                      message: 'Show in gallery',
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: _busy
-                              ? null
-                              : () => _revealAsset(link.assetId),
-                          child: Text(
-                            _status,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                              decoration: TextDecoration.underline,
-                              decorationColor: Colors.white38,
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Text(
-                      _status,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white60,
-                        fontSize: 12,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            if (_similarity != null) SimilarityStatus(controller: _similarity!),
-            if (_selectedPaths.isNotEmpty)
-              Text('${_selectedPaths.length} selected  '),
-            if (_classifying)
-              TextButton(
-                onPressed: _cancelClassification
-                    ? null
-                    : () => setState(() => _cancelClassification = true),
-                child: Text(
-                  _cancelClassification ? 'Stopping…' : 'Cancel after image',
-                ),
-              ),
-          ],
-        ),
-      ),
       body: _library == null
           ? Center(
               child: Column(
@@ -3105,6 +3119,11 @@ class _GalleryPageState extends State<GalleryPage>
                       ),
                     ],
                   ),
+                  const SizedBox(height: 20),
+                  Text(
+                    _status,
+                    style: const TextStyle(color: AppColors.mist, fontSize: 12),
+                  ),
                 ],
               ),
             )
@@ -3112,6 +3131,7 @@ class _GalleryPageState extends State<GalleryPage>
               children: [
                 TagSidebar(
                   width: _sidebarWidth,
+                  footer: _statusFooter(),
                   tags: _tags,
                   viewCounts: _viewCounts,
                   view: _showArchived

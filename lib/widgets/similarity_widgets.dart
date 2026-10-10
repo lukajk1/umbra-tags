@@ -11,24 +11,22 @@ class SimilarityStatus extends StatelessWidget {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: controller,
     builder: (context, _) => Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Tooltip(
-          message: controller.error ?? controller.summary,
-          child: TextButton.icon(
-            onPressed: () => showDialog<void>(
-              context: context,
-              builder: (_) => _IndexDetails(controller: controller),
-            ),
-            icon: Icon(
-              controller.error == null
-                  ? Icons.image_search
-                  : Icons.warning_amber,
-              size: 18,
-            ),
-            label: SizedBox(
-              width: 205,
-              child: Text(
+        Flexible(
+          child: Tooltip(
+            message: controller.error ?? controller.summary,
+            child: TextButton.icon(
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (_) => _IndexDetails(controller: controller),
+              ),
+              icon: Icon(
+                controller.error == null
+                    ? Icons.image_search
+                    : Icons.warning_amber,
+                size: 18,
+              ),
+              label: Text(
                 controller.summary,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

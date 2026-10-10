@@ -111,7 +111,7 @@ void main() {
               .length ==
           2,
     );
-    expect(find.text('1 selected  '), findsOneWidget);
+    expect(find.text('1 selected'), findsOneWidget);
     expect(source.existsSync(), isTrue);
     await tester.tap(find.byTooltip('New tag'));
     await _until(

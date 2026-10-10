@@ -197,6 +197,7 @@ class TagSidebar extends StatefulWidget {
     this.viewCounts = const {},
     this.collapsedTags = const {},
     this.onToggleCollapsed,
+    this.footer,
     this.width = 220,
   });
 
@@ -227,6 +228,9 @@ class TagSidebar extends StatefulWidget {
   /// While searching, every match is shown regardless.
   final Set<String> collapsedTags;
   final ValueChanged<String>? onToggleCollapsed;
+
+  /// Pinned below the tag list, e.g. the library status.
+  final Widget? footer;
   @override
   State<TagSidebar> createState() => _TagSidebarState();
 }
@@ -525,6 +529,10 @@ class _TagSidebarState extends State<TagSidebar> {
                       },
                     ),
             ),
+            if (widget.footer != null) ...[
+              const Divider(height: 1),
+              widget.footer!,
+            ],
           ],
         ),
       ),

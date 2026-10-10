@@ -100,7 +100,7 @@ void main() {
     final tiles = find.byType(GalleryTile);
     await tester.tap(tiles.at(0), kind: PointerDeviceKind.mouse);
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('1 selected  '), findsOneWidget);
+    expect(find.text('1 selected'), findsOneWidget);
 
     // Ctrl-click tiles 2 and 3, letting go of Ctrl right after each click.
     for (final index in [2, 3]) {
@@ -109,14 +109,14 @@ void main() {
       await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
       await tester.pump(const Duration(milliseconds: 400));
     }
-    expect(find.text('3 selected  '), findsOneWidget);
+    expect(find.text('3 selected'), findsOneWidget);
 
     // Ctrl-click a selected tile to remove it.
     await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
     await tester.tap(tiles.at(2), kind: PointerDeviceKind.mouse);
     await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('2 selected  '), findsOneWidget);
+    expect(find.text('2 selected'), findsOneWidget);
 
     Future<void> click(int index, List<LogicalKeyboardKey> keys) async {
       for (final key in keys) {
@@ -132,10 +132,10 @@ void main() {
     // Shift-click selects the range from the last plain click, replacing.
     await click(1, []);
     await click(3, [LogicalKeyboardKey.shiftLeft]);
-    expect(find.text('3 selected  '), findsOneWidget);
+    expect(find.text('3 selected'), findsOneWidget);
     // The anchor stays put: Shift-click in the other direction.
     await click(0, [LogicalKeyboardKey.shiftLeft]);
-    expect(find.text('2 selected  '), findsOneWidget);
+    expect(find.text('2 selected'), findsOneWidget);
     // Ctrl+Shift adds a range to the existing selection.
     await click(3, []);
     await click(1, [LogicalKeyboardKey.controlLeft]);
@@ -143,7 +143,7 @@ void main() {
       LogicalKeyboardKey.controlLeft,
       LogicalKeyboardKey.shiftLeft,
     ]);
-    expect(find.text('3 selected  '), findsOneWidget);
+    expect(find.text('3 selected'), findsOneWidget);
 
     await tester.tap(find.text('File'));
     await tester.pumpAndSettle();

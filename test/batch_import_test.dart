@@ -146,7 +146,7 @@ void main() {
         tester,
         () => find.byType(GalleryTile).evaluate().length == 1 && _idle(),
       );
-      expect(find.text('1 selected  '), findsOneWidget);
+      expect(find.text('1 selected'), findsOneWidget);
 
       await tester.tap(find.text('File'));
       await tester.pumpAndSettle();
