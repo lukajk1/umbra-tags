@@ -72,11 +72,7 @@ void main() {
       expect(find.byTooltip('Show preview'), findsOneWidget);
       await tester.tap(find.byTooltip('Show preview'));
       await tester.pump();
-      final divider = find.byWidgetPredicate(
-        (widget) =>
-            widget is MouseRegion &&
-            widget.cursor == SystemMouseCursors.resizeColumn,
-      );
+      final divider = find.byKey(const ValueKey('preview-resize-handle'));
       await tester.drag(divider, const Offset(-60, 0));
       await tester.tap(
         find.byTooltip('Masonry — arrange by image proportions'),

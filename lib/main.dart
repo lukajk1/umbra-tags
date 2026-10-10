@@ -167,6 +167,10 @@ class _GalleryPageState extends State<GalleryPage>
   Timer? _resizeTimer;
   final Set<String> _selectedPaths = {};
   double _previewWidth = 300;
+
+  /// Tag sidebar width, dragged from its right edge.
+  double _sidebarWidth = 220;
+  static const _sidebarMinWidth = 160.0, _sidebarMaxWidth = 480.0;
   bool _previewVisible = true;
 
   // Marquee selection state
@@ -798,6 +802,12 @@ class _GalleryPageState extends State<GalleryPage>
     setState(() {
       _tileSize = _settingNumber(data['tileSize'], 200, 50, 400);
       _previewWidth = _settingNumber(data['previewWidth'], 300, 150, 800);
+      _sidebarWidth = _settingNumber(
+        data['sidebarWidth'],
+        220,
+        _sidebarMinWidth,
+        _sidebarMaxWidth,
+      );
       _layout =
           LayoutMode.values
               .where((value) => value.name == data['layout'])
@@ -907,6 +917,7 @@ class _GalleryPageState extends State<GalleryPage>
       'tileSize': _tileSize,
       'collapsedTags': _collapsedTags.toList(),
       'previewWidth': _previewWidth,
+      'sidebarWidth': _sidebarWidth,
       'layout': _layout.name,
       'ml': {
         'home': _mlSettings.home,
@@ -2612,6 +2623,7 @@ class _GalleryPageState extends State<GalleryPage>
           : Row(
               children: [
                 TagSidebar(
+                  width: _sidebarWidth,
                   tags: _tags,
                   viewCounts: _viewCounts,
                   view: _showArchived
@@ -2636,7 +2648,21 @@ class _GalleryPageState extends State<GalleryPage>
                     _persistSession();
                   },
                 ),
-                const VerticalDivider(width: 1),
+                // Drag handle
+                GestureDetector(
+                  onHorizontalDragUpdate: (d) => setState(() {
+                    _sidebarWidth = (_sidebarWidth + d.delta.dx).clamp(
+                      _sidebarMinWidth,
+                      _sidebarMaxWidth,
+                    );
+                    _persistSession();
+                  }),
+                  child: MouseRegion(
+                    key: const ValueKey('sidebar-resize-handle'),
+                    cursor: SystemMouseCursors.resizeColumn,
+                    child: Container(width: 6, color: Colors.white12),
+                  ),
+                ),
                 Expanded(
                   child: Column(
                     children: [
@@ -3002,6 +3028,7 @@ class _GalleryPageState extends State<GalleryPage>
                       _persistSession();
                     }),
                     child: MouseRegion(
+                      key: const ValueKey('preview-resize-handle'),
                       cursor: SystemMouseCursors.resizeColumn,
                       child: Container(width: 6, color: Colors.white12),
                     ),
