@@ -167,7 +167,14 @@ class _GalleryPageState extends State<GalleryPage>
   Map<String, double> _searchScores = {};
   final _searchField = TextEditingController();
   final _searchFocus = FocusNode();
-  static const _textSearchLimit = 100;
+  static const _searchPage = 30;
+  int _searchLimit = _searchPage;
+  bool _searchHasMore = false, _loadingMoreResults = false;
+
+  /// Whether the text encoder is loaded; the first search otherwise waits
+  /// several seconds for it.
+  bool _searchModelReady = false;
+  Future<void>? _searchModelLoading;
 
   /// Sidebar tags whose children are hidden; kept across sessions.
   final Set<String> _collapsedTags = {};
@@ -401,7 +408,12 @@ class _GalleryPageState extends State<GalleryPage>
         'The similarity index needs attention: ${similarity.error}',
       );
     }
-    setState(() => _status = 'Searching for “$query”…');
+    setState(
+      () => _status = _searchModelReady
+          ? 'Searching for “$query”…'
+          : 'Loading the search model (first search only)…',
+    );
+    await _warmSearchModel();
     final vector = await _suggestionBackend.embedText(query);
     if (vector.embeddingKey == null ||
         vector.embeddingKey != similarity.model?.key) {
@@ -411,6 +423,7 @@ class _GalleryPageState extends State<GalleryPage>
     }
     _textQuery = query;
     _queryVector = vector;
+    _searchLimit = _searchPage;
     _selectedPaths.clear();
     await _reload();
     if (_scrollController.hasClients) _scrollController.jumpTo(0);
@@ -431,10 +444,13 @@ class _GalleryPageState extends State<GalleryPage>
                   'op': 'searchVector',
                   'key': query.embeddingKey,
                   'vector': query.vector,
-                  'limit': _textSearchLimit,
+                  // One extra row tells whether more results exist.
+                  'limit': _searchLimit + 1,
                 })
                 as List)
             .cast<Map>();
+    _searchHasMore = ranked.length > _searchLimit;
+    if (_searchHasMore) ranked.removeLast();
     // Reference-tag images stay hidden, as in All images.
     final visible = {
       for (final asset in await library.assets(excludeHidden: true))
@@ -448,13 +464,64 @@ class _GalleryPageState extends State<GalleryPage>
     ].where((asset) => !_hiddenIds.contains(asset.id)).toList();
   }
 
+  /// Loads the text encoder in the background, e.g. from the first keystroke
+  /// in the search field, so the first search does not wait for it.
+  Future<void> _warmSearchModel() {
+    if (_searchModelReady) return Future.value();
+    return _searchModelLoading ??= _suggestionBackend
+        .load()
+        .then((_) {
+          _searchModelReady = true;
+        })
+        .whenComplete(() => _searchModelLoading = null);
+  }
+
+  /// Search results keep loading near the bottom while they stay relevant:
+  /// at least half as similar as the best match. Below that, the
+  /// "Show more" button takes over.
+  bool get _resultsStillRelevant {
+    if (_searchScores.isEmpty) return false;
+    final scores = _searchScores.values;
+    final best = scores.reduce((a, b) => a > b ? a : b);
+    final last = scores.reduce((a, b) => a < b ? a : b);
+    return best > 0 && last >= best * 0.5;
+  }
+
+  void _maybeLoadMoreResults() {
+    if (_queryVector == null ||
+        !_searchHasMore ||
+        _loadingMoreResults ||
+        _busy ||
+        !_resultsStillRelevant ||
+        !_scrollController.hasClients ||
+        _scrollController.position.extentAfter > 800) {
+      return;
+    }
+    unawaited(_loadMoreResults());
+  }
+
+  Future<void> _loadMoreResults() async {
+    if (_loadingMoreResults || _queryVector == null) return;
+    _loadingMoreResults = true;
+    try {
+      _searchLimit += _searchPage;
+      await _reload();
+    } finally {
+      _loadingMoreResults = false;
+    }
+    // Short results may not fill the view; keep going while relevant.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _maybeLoadMoreResults(),
+    );
+  }
+
   String _textSearchStatus(int count) {
     final similarity = _similarity;
     final best = _searchScores.values.fold<double?>(
       null,
       (best, score) => best == null || score > best ? score : best,
     );
-    return 'Closest $count to “$_textQuery”'
+    return '${_searchHasMore ? 'Top' : 'All'} $count matches for “$_textQuery”'
         '${best == null ? '' : ' · best match ${best.toStringAsFixed(3)}'}'
         '${similarity != null && similarity.ready < similarity.total ? ' · ${similarity.ready} of ${similarity.total} images indexed so far' : ''}';
   }
@@ -838,6 +905,7 @@ class _GalleryPageState extends State<GalleryPage>
     });
     _scrollController.addListener(_rememberScrollPosition);
     HardwareKeyboard.instance.addHandler(_focusSearchOnCtrlK);
+    _scrollController.addListener(_maybeLoadMoreResults);
     windowManager.isMaximized().then(
       (value) {
         if (mounted) setState(() => _maximized = value);
@@ -2530,6 +2598,14 @@ class _GalleryPageState extends State<GalleryPage>
     key: const ValueKey('text-search'),
     controller: _searchField,
     focusNode: _searchFocus,
+    // Start loading the text encoder on the first keystroke, so it is
+    // usually ready by the time the query is submitted. A failure here
+    // resurfaces on the search itself.
+    onChanged: (text) {
+      if (text.isNotEmpty && !_searchModelReady) {
+        unawaited(_warmSearchModel().catchError((Object _) {}));
+      }
+    },
     enabled: _library != null,
     onSubmitted: _searchByText,
     textInputAction: TextInputAction.search,
@@ -3192,6 +3268,31 @@ class _GalleryPageState extends State<GalleryPage>
                                         child: Stack(
                                           children: [
                                             grid,
+                                            if (_queryVector != null &&
+                                                _searchHasMore &&
+                                                !_resultsStillRelevant)
+                                              Positioned(
+                                                left: 0,
+                                                right: 0,
+                                                bottom: 16,
+                                                child: Center(
+                                                  child: FilledButton.icon(
+                                                    key: const ValueKey(
+                                                      'search-show-more',
+                                                    ),
+                                                    onPressed:
+                                                        _loadingMoreResults
+                                                        ? null
+                                                        : _loadMoreResults,
+                                                    icon: const Icon(
+                                                      Icons.expand_more,
+                                                    ),
+                                                    label: const Text(
+                                                      'Show $_searchPage more (less similar)',
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
                                             if (_selectionRect != null)
                                               Positioned.fill(
                                                 child: IgnorePointer(
