@@ -164,6 +164,7 @@ class _ResizeDialogState extends State<ResizeDialog> {
             ),
             const SizedBox(height: 12),
             Text('Resize to', style: theme.textTheme.labelLarge),
+            _scaleSlider(target, muted),
             RadioGroup<int>(
               groupValue: _choice,
               onChanged: (value) => setState(() => _choice = value ?? _choice),
@@ -217,6 +218,62 @@ class _ResizeDialogState extends State<ResizeDialog> {
     );
   }
 
+  /// The target as a share of the original long edge, or null when invalid.
+  double? get _factor {
+    final target = _target;
+    return target == null ? null : math.max(target.$1, target.$2) / _longEdge;
+  }
+
+  /// Snaps within 1.5 points of a breakpoint, selecting that option;
+  /// anywhere else sets the long edge.
+  void _slideTo(double factor) {
+    final snap = _breakpoints.indexWhere((b) => (b.$2 - factor).abs() < 0.015);
+    setState(() {
+      if (snap != -1) {
+        _choice = snap;
+        _customEdge.text = '${(_longEdge * _breakpoints[snap].$2).round()}';
+      } else {
+        _choice = _custom;
+        _customEdge.text =
+            '${(_longEdge * factor).round().clamp(1, _longEdge - 1)}';
+      }
+    });
+  }
+
+  /// A slider over the same choices as the list below: dragging it picks a
+  /// breakpoint when it snaps to one, otherwise sets the long edge.
+  Widget _scaleSlider((int, int)? target, Color? muted) {
+    final min = math.max(0.02, 1 / _longEdge);
+    final max = (_longEdge - 1) / _longEdge;
+    final factor = (_factor ?? 0.5).clamp(min, max);
+    return Row(
+      children: [
+        Expanded(
+          child: Slider(
+            key: const ValueKey('resize-slider'),
+            value: factor,
+            min: min,
+            max: max,
+            onChanged: _slideTo,
+          ),
+        ),
+        SizedBox(
+          width: 150,
+          child: Text(
+            target == null
+                ? '—'
+                : '${(factor * 100).round()}%  ·  ${target.$1} × ${target.$2}',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: muted,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _option(int value, String label, String size, Color? muted) =>
       RadioListTile<int>(
         value: value,
@@ -241,13 +298,17 @@ class _ResizeDialogState extends State<ResizeDialog> {
           const Text('Long edge'),
           const SizedBox(width: 12),
           SizedBox(
-            width: 80,
+            width: 104,
             child: TextField(
               controller: _customEdge,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: const InputDecoration(
                 isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
                 suffixText: 'px',
               ),
               onTap: () => setState(() => _choice = _custom),

@@ -91,6 +91,32 @@ void main() {
     expect(choice?.action, ResizeAction.skip);
   });
 
+  testWidgets('the slider and the options stay in sync', (tester) async {
+    await _open(tester, ResizeDialog(asset: _asset(6000, 4000)));
+    Slider slider() =>
+        tester.widget<Slider>(find.byKey(const ValueKey('resize-slider')));
+
+    // Starts on 50%.
+    expect(slider().value, closeTo(0.5, 0.001));
+    expect(find.text('50%  ·  3000 × 2000'), findsOneWidget);
+
+    // Near a breakpoint it snaps to that option.
+    slider().onChanged!(0.26);
+    await tester.pump();
+    expect(find.text('Resize to 1500 × 1000'), findsOneWidget);
+
+    // Elsewhere it sets the long edge.
+    slider().onChanged!(0.6);
+    await tester.pump();
+    expect(find.text('Resize to 3600 × 2400'), findsOneWidget);
+    expect(find.widgetWithText(TextField, '3600'), findsOneWidget);
+
+    // Picking an option moves the slider.
+    await tester.tap(find.text('10%'));
+    await tester.pump();
+    expect(slider().value, closeTo(0.1, 0.001));
+  });
+
   test('large-image threshold matches by long edge or file size', () {
     const pixels = LargeImageThreshold(LargeImageMeasure.longEdge, 4000);
     const megabytes = LargeImageThreshold(LargeImageMeasure.fileSize, 10);
