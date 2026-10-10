@@ -690,6 +690,9 @@ class _GalleryPageState extends State<GalleryPage>
     if (loadNow) unawaited(_warmModels(Set.of(_startupModels)));
   }
 
+  /// ML classify (artwork / photo) is built but hidden from the menus.
+  static const _mlClassifyEnabled = false;
+
   void _classifySelection() => _run(() async {
     final selected = _selection;
     final library = _library;
@@ -1702,6 +1705,9 @@ class _GalleryPageState extends State<GalleryPage>
         !asset.missing &&
         _tags.any((tag) => asset.tagIds.contains(tag.parentId)),
   );
+
+  /// AI refine tags is built but hidden; Find matching images covers it.
+  static const _refineEnabled = false;
 
   void _refineSelection() => _run(() async {
     final library = _library;
@@ -3078,12 +3084,13 @@ class _GalleryPageState extends State<GalleryPage>
                         : _editSelectionTags,
                     child: const Text('Edit tags…'),
                   ),
-                  MenuItemButton(
-                    onPressed: _busy || _selectedPaths.isEmpty
-                        ? null
-                        : _classifySelection,
-                    child: const Text('ML classify'),
-                  ),
+                  if (_mlClassifyEnabled)
+                    MenuItemButton(
+                      onPressed: _busy || _selectedPaths.isEmpty
+                          ? null
+                          : _classifySelection,
+                      child: const Text('ML classify'),
+                    ),
                   if (_aiSortEnabled)
                     MenuItemButton(
                       onPressed: _busy || _library == null
@@ -3363,7 +3370,9 @@ class _GalleryPageState extends State<GalleryPage>
                                     onArchive: _busy ? null : _archiveSelection,
                                     archived: _showArchived,
                                     onDelete: _busy ? null : _deleteSelection,
-                                    onRefine: _busy ? null : _refineSelection,
+                                    onRefine: !_refineEnabled || _busy
+                                        ? null
+                                        : _refineSelection,
                                     canRefine: _canRefineSelection,
                                     onAiSort:
                                         !_aiSortEnabled ||
@@ -3442,7 +3451,9 @@ class _GalleryPageState extends State<GalleryPage>
                                     onArchive: _busy ? null : _archiveSelection,
                                     archived: _showArchived,
                                     onDelete: _busy ? null : _deleteSelection,
-                                    onRefine: _busy ? null : _refineSelection,
+                                    onRefine: !_refineEnabled || _busy
+                                        ? null
+                                        : _refineSelection,
                                     canRefine: _canRefineSelection,
                                     onAiSort:
                                         !_aiSortEnabled ||
