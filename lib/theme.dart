@@ -226,3 +226,33 @@ class _DitherPainter extends CustomPainter {
   @override
   bool shouldRepaint(_DitherPainter old) => old.density != density;
 }
+
+/// A square slider thumb, matching the theme's square corners.
+class SquareSliderThumb extends SliderComponentShape {
+  const SquareSliderThumb({this.size = 12});
+  final double size;
+
+  @override
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) => Size.square(size);
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required Animation<double> activationAnimation,
+    required Animation<double> enableAnimation,
+    required bool isDiscrete,
+    required TextPainter labelPainter,
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required TextDirection textDirection,
+    required double value,
+    required double textScaleFactor,
+    required Size sizeWithOverflow,
+  }) {
+    context.canvas.drawRect(
+      Rect.fromCenter(center: center, width: size, height: size),
+      Paint()..color = sliderTheme.thumbColor ?? AppColors.foam,
+    );
+  }
+}

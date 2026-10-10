@@ -2339,6 +2339,168 @@ class _GalleryPageState extends State<GalleryPage>
     );
   }
 
+  /// Menus on the left, the search field centred in the space between, then
+  /// layout, zoom, preview and Import on the right.
+  Widget _topBar(Widget menus) => Row(
+    children: [
+      menus,
+      Expanded(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: _searchBox(),
+            ),
+          ),
+        ),
+      ),
+      SegmentedButton<LayoutMode>(
+        style: const ButtonStyle(
+          visualDensity: VisualDensity(horizontal: -2, vertical: -2),
+          padding: WidgetStatePropertyAll(EdgeInsets.zero),
+        ),
+        segments: const [
+          ButtonSegment(
+            value: LayoutMode.crop,
+            icon: Icon(Icons.grid_view_rounded, size: 18, semanticLabel: 'Crop'),
+            tooltip: 'Crop — fill uniform tiles',
+          ),
+          ButtonSegment(
+            value: LayoutMode.letterbox,
+            icon: Icon(Icons.fit_screen_rounded, size: 18, semanticLabel: 'Fit'),
+            tooltip: 'Fit — show the whole image',
+          ),
+          ButtonSegment(
+            value: LayoutMode.masonry,
+            icon: Icon(Icons.view_quilt_rounded, size: 18, semanticLabel: 'Masonry'),
+            tooltip: 'Masonry — arrange by image proportions',
+          ),
+        ],
+        showSelectedIcon: false,
+        selected: {_layout},
+        onSelectionChanged: (s) {
+          setState(() => _layout = s.first);
+          _persistSession();
+        },
+      ),
+      const SizedBox(width: 18),
+      // Zoom: small square, thin track with a square thumb, large square.
+      const Icon(Icons.square, size: 9, semanticLabel: 'Smaller tiles'),
+      SizedBox(
+        width: 130,
+        child: SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 1.5,
+            thumbShape: const SquareSliderThumb(size: 12),
+            overlayShape: SliderComponentShape.noOverlay,
+            showValueIndicator: ShowValueIndicator.never,
+          ),
+          child: Slider(
+            value: _tileSize,
+            min: 50,
+            max: 400,
+            onChanged: (v) {
+              setState(() => _tileSize = v);
+              _persistSession();
+            },
+          ),
+        ),
+      ),
+      const Icon(Icons.square, size: 15, semanticLabel: 'Larger tiles'),
+      const SizedBox(width: 14),
+      IconButton(
+        icon: Icon(
+          _previewVisible ? Icons.view_sidebar : Icons.view_sidebar_outlined,
+          size: 20,
+        ),
+        tooltip: _previewVisible ? 'Hide preview' : 'Show preview',
+        onPressed: () {
+          setState(() => _previewVisible = !_previewVisible);
+          _persistSession();
+        },
+      ),
+      if (widget.startReceiver) _receiverIndicator(),
+      const SizedBox(width: 10),
+      if (_library != null)
+        FilledButton.icon(
+          onPressed: _busy ? null : _importImages,
+          style: const ButtonStyle(
+            visualDensity: VisualDensity(vertical: -1),
+            padding: WidgetStatePropertyAll(
+              EdgeInsets.symmetric(horizontal: 14),
+            ),
+          ),
+          icon: const Icon(Icons.download_rounded, size: 18),
+          label: const Text('Import'),
+        ),
+      const SizedBox(width: 12),
+    ],
+  );
+
+  /// The browser extension's receiver: white while listening; dimmed with an
+  /// amber dot when it is off or could not start.
+  Widget _receiverIndicator() {
+    final listening = _receiver?.port != null;
+    return Tooltip(
+      message: _receiverStatus,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(
+              Icons.browser_updated,
+              size: 20,
+              color: listening ? AppColors.foam : AppColors.mist,
+            ),
+            if (!listening)
+              const Positioned(
+                right: -3,
+                top: -3,
+                child: SizedBox.square(
+                  dimension: 7,
+                  child: ColoredBox(color: AppColors.star),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _searchBox() => TextField(
+    key: const ValueKey('text-search'),
+    controller: _searchField,
+    enabled: _library != null,
+    onSubmitted: _searchByText,
+    textInputAction: TextInputAction.search,
+    style: const TextStyle(fontSize: 13.5),
+    decoration: InputDecoration(
+      isDense: true,
+      // Translucent on the ultramarine bar.
+      fillColor: const Color(0x61070A33),
+      enabledBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.zero,
+        borderSide: BorderSide(color: Color(0x47F3F5FF)),
+      ),
+      hintText: 'Describe an image… e.g. blue city at night',
+      prefixIcon: const Icon(Icons.search, size: 18),
+      suffixIcon: _textQuery == null
+          ? null
+          : IconButton(
+              tooltip: 'Clear search',
+              icon: const Icon(Icons.close, size: 18),
+              onPressed: _busy
+                  ? null
+                  : () => _run(() async {
+                      _endTextSearch();
+                      await _reload();
+                    }),
+            ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -2347,7 +2509,7 @@ class _GalleryPageState extends State<GalleryPage>
           preferredSize: Size.fromHeight(4),
           child: RepaintBoundary(child: DitherStrip()),
         ),
-        title: MenuBar(
+        title: _topBar(MenuBar(
           style: const MenuStyle(
             backgroundColor: WidgetStatePropertyAll(Colors.transparent),
             elevation: WidgetStatePropertyAll(0),
@@ -2484,98 +2646,8 @@ class _GalleryPageState extends State<GalleryPage>
               child: const Text('Help'),
             ),
           ],
-        ),
+        )),
         titleSpacing: 0,
-        actions: [
-          SizedBox(
-            width: 300,
-            child: TextField(
-              key: const ValueKey('text-search'),
-              controller: _searchField,
-              enabled: _library != null,
-              onSubmitted: _searchByText,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                isDense: true,
-                // Translucent on the ultramarine bar.
-                fillColor: const Color(0x61070A33),
-                enabledBorder: const OutlineInputBorder(
-                  borderRadius: BorderRadius.zero,
-                  borderSide: BorderSide(color: Color(0x47F3F5FF)),
-                ),
-                hintText: 'Describe an image… e.g. green statue',
-                prefixIcon: const Icon(Icons.search, size: 18),
-                suffixIcon: _textQuery == null
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear search',
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: _busy
-                            ? null
-                            : () => _run(() async {
-                                _endTextSearch();
-                                await _reload();
-                              }),
-                      ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          SegmentedButton<LayoutMode>(
-            segments: const [
-              ButtonSegment(
-                value: LayoutMode.crop,
-                icon: Icon(Icons.grid_view_rounded, semanticLabel: 'Crop'),
-                tooltip: 'Crop — fill uniform tiles',
-              ),
-              ButtonSegment(
-                value: LayoutMode.letterbox,
-                icon: Icon(Icons.fit_screen_rounded, semanticLabel: 'Fit'),
-                tooltip: 'Fit — show the whole image',
-              ),
-              ButtonSegment(
-                value: LayoutMode.masonry,
-                icon: Icon(Icons.view_quilt_rounded, semanticLabel: 'Masonry'),
-                tooltip: 'Masonry — arrange by image proportions',
-              ),
-            ],
-            showSelectedIcon: false,
-            selected: {_layout},
-            onSelectionChanged: (s) {
-              setState(() => _layout = s.first);
-              _persistSession();
-            },
-          ),
-          const SizedBox(width: 16),
-          const Icon(Icons.photo_size_select_large),
-          SizedBox(
-            width: 180,
-            child: Slider(
-              value: _tileSize,
-              min: 50,
-              max: 400,
-              label: '${_tileSize.round()}px',
-              onChanged: (v) {
-                setState(() => _tileSize = v);
-                _persistSession();
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: Icon(
-              _previewVisible
-                  ? Icons.view_sidebar
-                  : Icons.view_sidebar_outlined,
-            ),
-            tooltip: _previewVisible ? 'Hide preview' : 'Show preview',
-            onPressed: () {
-              setState(() => _previewVisible = !_previewVisible);
-              _persistSession();
-            },
-          ),
-          const SizedBox(width: 4),
-        ],
       ),
       bottomNavigationBar: Container(
         color: AppColors.darker,
@@ -2647,26 +2719,6 @@ class _GalleryPageState extends State<GalleryPage>
                 child: Text(
                   _cancelClassification ? 'Stopping…' : 'Cancel after image',
                 ),
-              ),
-            if (widget.startReceiver)
-              Tooltip(
-                message: _receiverStatus,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(
-                    Icons.browser_updated,
-                    size: 20,
-                    color: _receiver?.port != null
-                        ? Colors.greenAccent
-                        : Colors.orangeAccent,
-                  ),
-                ),
-              ),
-            if (_library != null)
-              FilledButton.icon(
-                onPressed: _busy ? null : _importImages,
-                icon: const Icon(Icons.add_photo_alternate_outlined),
-                label: const Text('Import images'),
               ),
           ],
         ),

@@ -78,7 +78,7 @@ void main() {
           find.byType(CircularProgressIndicator).evaluate().isEmpty,
     );
     expect(File(p.join(root.path, 'library.json')).existsSync(), isTrue);
-    await tester.tap(find.text('Import images'));
+    await tester.tap(find.text('Import'));
     await _until(
       tester,
       () =>

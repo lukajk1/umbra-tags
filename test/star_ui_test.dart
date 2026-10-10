@@ -92,7 +92,7 @@ void main() {
       tester,
       () => find.text('0 images').evaluate().isNotEmpty && _idle(),
     );
-    await tester.tap(find.text('Import images'));
+    await tester.tap(find.text('Import'));
     await _until(
       tester,
       () => find.byType(GalleryTile).evaluate().length == 4 && _idle(),

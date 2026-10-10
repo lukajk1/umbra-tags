@@ -102,7 +102,7 @@ void main() {
         XFile(corrupt.path),
         XFile(alsoGood.path),
       ];
-      await tester.tap(find.text('Import images'));
+      await tester.tap(find.text('Import'));
       await _until(
         tester,
         () => find.byType(AlertDialog).evaluate().isNotEmpty,
@@ -141,7 +141,7 @@ void main() {
         () => find.byType(GalleryTile).evaluate().isEmpty && _idle(),
       );
       picker.files = [XFile(picture('new.png', 120).path)];
-      await tester.tap(find.text('Import images'));
+      await tester.tap(find.text('Import'));
       await _until(
         tester,
         () => find.byType(GalleryTile).evaluate().length == 1 && _idle(),
