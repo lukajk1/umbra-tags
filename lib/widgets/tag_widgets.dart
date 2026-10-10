@@ -26,6 +26,24 @@ List<({LibraryTag tag, int depth})> tagTree(List<LibraryTag> tags) {
   return result;
 }
 
+/// Drops the descendants of [collapsed] tags from a [tagTree] listing.
+List<({LibraryTag tag, int depth})> visibleTagRows(
+  List<({LibraryTag tag, int depth})> rows,
+  Set<String> collapsed,
+) {
+  final result = <({LibraryTag tag, int depth})>[];
+  int? hideBelow; // Depth of the collapsed tag whose subtree is being skipped.
+  for (final row in rows) {
+    if (hideBelow != null) {
+      if (row.depth > hideBelow) continue;
+      hideBelow = null;
+    }
+    result.add(row);
+    if (collapsed.contains(row.tag.id)) hideBelow = row.depth;
+  }
+  return result;
+}
+
 /// For each row of a displayed tag tree (given as depths, parents first),
 /// which guide lines continue below it: entry k is true when the row's
 /// ancestor at depth k + 1, or for the last entry the row itself, has a later
@@ -70,10 +88,14 @@ class TagTreeIndent extends StatelessWidget {
     required this.child,
     this.step = 24,
     this.origin = 28,
+    this.elbowExtension = 0,
   });
   final List<bool> continues;
   final Widget child;
   final double step, origin;
+
+  /// Extra length for this row's elbow, e.g. across an empty expander slot.
+  final double elbowExtension;
 
   @override
   Widget build(BuildContext context) => continues.isEmpty
@@ -89,6 +111,7 @@ class TagTreeIndent extends StatelessWidget {
                     continues: continues,
                     step: step,
                     origin: origin,
+                    elbowExtension: elbowExtension,
                     color: Colors.white38,
                   ),
                 ),
@@ -105,9 +128,10 @@ class _TagTreePainter extends CustomPainter {
     required this.step,
     required this.origin,
     required this.color,
+    this.elbowExtension = 0,
   });
   final List<bool> continues;
-  final double step, origin;
+  final double step, origin, elbowExtension;
   final Color color;
 
   @override
@@ -134,7 +158,7 @@ class _TagTreePainter extends CustomPainter {
     );
     canvas.drawLine(
       Offset(parentX, y),
-      Offset(depth * step + origin - 13, y),
+      Offset(depth * step + origin - 13 + elbowExtension, y),
       paint,
     );
   }
@@ -144,6 +168,7 @@ class _TagTreePainter extends CustomPainter {
       !listEquals(old.continues, continues) ||
       old.step != step ||
       old.origin != origin ||
+      old.elbowExtension != elbowExtension ||
       old.color != color;
 }
 
@@ -162,6 +187,8 @@ class TagSidebar extends StatefulWidget {
     this.onFindMatches,
     this.onToggleExcluded,
     this.viewCounts = const {},
+    this.collapsedTags = const {},
+    this.onToggleCollapsed,
   });
   final List<LibraryTag> tags;
   final LibraryView view;
@@ -178,6 +205,11 @@ class TagSidebar extends StatefulWidget {
 
   /// Image counts shown beside All images, Untagged and Archived.
   final Map<LibraryView, int> viewCounts;
+
+  /// Tags whose children are hidden, and the expander that toggles one.
+  /// While searching, every match is shown regardless.
+  final Set<String> collapsedTags;
+  final ValueChanged<String>? onToggleCollapsed;
   @override
   State<TagSidebar> createState() => _TagSidebarState();
 }
@@ -209,11 +241,40 @@ class _TagSidebarState extends State<TagSidebar> {
     PopupMenuItem(value: 'delete', child: Text('Delete tag')),
   ];
 
+  /// A chevron that shows or hides [tag]'s children; an empty slot for
+  /// tags without children, so every row's icon lines up.
+  Widget _expander(LibraryTag tag, Set<String> parents) {
+    if (!parents.contains(tag.id) || _search.isNotEmpty) {
+      return const SizedBox(width: 18);
+    }
+    final collapsed = widget.collapsedTags.contains(tag.id);
+    return Tooltip(
+      message: collapsed ? 'Expand' : 'Collapse',
+      child: InkWell(
+        key: ValueKey('tag-expander-${tag.id}'),
+        customBorder: const CircleBorder(),
+        onTap: widget.onToggleCollapsed == null
+            ? null
+            : () => widget.onToggleCollapsed!(tag.id),
+        child: Icon(
+          collapsed ? Icons.chevron_right : Icons.expand_more,
+          size: 18,
+          color: Colors.white70,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final rows = tagTree(widget.tags)
-        .where((r) => r.tag.name.toLowerCase().contains(_search.toLowerCase()))
-        .toList();
+    final parents = {for (final tag in widget.tags) ?tag.parentId};
+    final rows = _search.isEmpty
+        ? visibleTagRows(tagTree(widget.tags), widget.collapsedTags)
+        : tagTree(widget.tags)
+              .where(
+                (r) => r.tag.name.toLowerCase().contains(_search.toLowerCase()),
+              )
+              .toList();
     final guides = tagTreeGuides([for (final row in rows) row.depth]);
     return SizedBox(
       width: 220,
@@ -334,25 +395,39 @@ class _TagSidebarState extends State<TagSidebar> {
                             maxSimultaneousDrags: widget.busy ? 0 : 1,
                             dragAnchorStrategy: pointerDragAnchorStrategy,
                             feedback: _TagDragFeedback(name: row.tag.name),
-                            // Tree guides line up with the 18px leading icon,
-                            // centred 12 + 9 px into the row.
+                            // Tree guides line up with the 18px expander slot,
+                            // centred 12 + 9 px into the row; a leaf's elbow
+                            // runs across its empty slot to the tag icon.
                             child: TagTreeIndent(
                               continues: guides[index],
                               step: 20,
                               origin: 21,
+                              elbowExtension: parents.contains(row.tag.id)
+                                  ? 0
+                                  : 20,
                               child: ListTile(
                                 key: ValueKey('tag-filter-${row.tag.id}'),
                                 dense: true,
                                 contentPadding: const EdgeInsets.only(left: 12),
-                                leading: row.tag.excludedFromAll
-                                    ? const Tooltip(
-                                        message: 'Excluded from All images',
-                                        child: Icon(
-                                          Icons.visibility_off_outlined,
-                                          size: 18,
-                                        ),
-                                      )
-                                    : const Icon(Icons.label_outline, size: 18),
+                                leading: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _expander(row.tag, parents),
+                                    const SizedBox(width: 2),
+                                    row.tag.excludedFromAll
+                                        ? const Tooltip(
+                                            message: 'Excluded from All images',
+                                            child: Icon(
+                                              Icons.visibility_off_outlined,
+                                              size: 18,
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.label_outline,
+                                            size: 18,
+                                          ),
+                                  ],
+                                ),
                                 minLeadingWidth: 16,
                                 title: Tooltip(
                                   message: row.tag.name,

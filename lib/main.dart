@@ -190,6 +190,9 @@ class _GalleryPageState extends State<GalleryPage>
   final Map<String, LibraryAsset> _assetsByPath = {};
   final Map<String, GlobalKey> _tileKeys = {};
   final Map<String, Future<String?>> _thumbnails = {};
+
+  /// Sidebar tags whose children are hidden; kept across sessions.
+  final Set<String> _collapsedTags = {};
   bool _busy = false;
   Completer<void>? _operationIdle;
   Future<void>? _applyingOptions;
@@ -819,6 +822,13 @@ class _GalleryPageState extends State<GalleryPage>
         _startupModels.addAll(startupModels.keys);
       }
       _reopenLastLibrary = data['reopenLastLibrary'] != false;
+      _collapsedTags
+        ..clear()
+        ..addAll(
+          data['collapsedTags'] is List
+              ? (data['collapsedTags'] as List).whereType<String>()
+              : const <String>[],
+        );
       _minimizeToTray = data['minimizeToTray'] == true;
       _order = GalleryOrder.values.firstWhere(
         (value) => value.name == data['galleryOrder'],
@@ -886,6 +896,7 @@ class _GalleryPageState extends State<GalleryPage>
       'receiverEnabled': _receiverEnabled,
       'receiverPort': _receiverPort,
       'tileSize': _tileSize,
+      'collapsedTags': _collapsedTags.toList(),
       'previewWidth': _previewWidth,
       'layout': _layout.name,
       'ml': {
@@ -2489,6 +2500,13 @@ class _GalleryPageState extends State<GalleryPage>
                   onDelete: _deleteTag,
                   onFindMatches: _findTagMatches,
                   onToggleExcluded: _toggleTagExcluded,
+                  collapsedTags: _collapsedTags,
+                  onToggleCollapsed: (id) {
+                    setState(() {
+                      if (!_collapsedTags.remove(id)) _collapsedTags.add(id);
+                    });
+                    _persistSession();
+                  },
                 ),
                 const VerticalDivider(width: 1),
                 Expanded(
