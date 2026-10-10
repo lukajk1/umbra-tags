@@ -1,0 +1,624 @@
+<title>Umbra Tags Ultramarine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Layout: the existing 3-panel shell (tags | masonry | preview) at 1440×900,
+   scaled to fit, followed by numbered notes keyed to markers on the mock. */
+:root {
+  color-scheme: dark;
+  /* Ultramarine, sampled from the dithered-waves reference. Used at full
+     strength only on the top bar and the dither motifs. */
+  --ultra: #1a23de;
+  --ultra-hi: #3a43f0;
+  /* Deep blues for the working surfaces, darkest under the images. */
+  --navy-0: #070a33;   /* gallery well */
+  --navy-1: #0c1163;   /* side panels */
+  --navy-2: #141b8a;   /* hover, inputs */
+  --rule: #262da0;
+  /* Text: the white of the dither pixels, then two blue-greys. */
+  --foam: #f3f5ff;
+  --mist: #a3abee;
+  --haze: #6870c9;
+  --sun: #ffc94d;      /* stars only */
+  --serif: "Libre Baskerville", "Baskerville", "Georgia", serif;
+  --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+}
+html { background: var(--navy-0); }
+body {
+  background: var(--navy-0);
+  color: var(--foam);
+  font-family: var(--serif);
+  padding-inline: 16px;
+  padding-block: 28px 64px;
+}
+.page { max-width: 1440px; margin: 0 auto; display: grid; gap: 28px; }
+.intro { display: grid; gap: 8px; max-width: 68ch; }
+.intro h1 { font-size: 26px; font-weight: 400; margin: 0; letter-spacing: .01em; text-wrap: balance; }
+.intro p { margin: 0; color: var(--mist); line-height: 1.6; font-size: 14px; }
+.intro .eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; color: var(--mist); }
+
+/* ---------- scaled mock frame ---------- */
+.stage { position: relative; width: 100%; }
+.frame {
+  width: 1440px; height: 900px; transform-origin: 0 0;
+  position: absolute; top: 0; left: 0;
+  display: grid; grid-template-rows: 46px 4px 1fr 30px;
+  background: var(--navy-0);
+  outline: 1px solid var(--rule);
+  overflow: hidden;
+  font-size: 13px;
+}
+
+/* top bar: the one saturated band */
+.topbar {
+  background: var(--ultra);
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center;
+  gap: 24px; padding: 0 14px;
+}
+.menus { display: flex; gap: 20px; font-size: 14px; }
+.menus span { opacity: .95; }
+.search {
+  justify-self: center; width: 460px; height: 30px;
+  display: flex; align-items: center; gap: 10px; padding: 0 12px;
+  background: rgba(7, 10, 51, .38); border: 1px solid rgba(243, 245, 255, .28);
+  color: var(--foam); font-style: italic; font-size: 13px;
+}
+.search svg { flex: none; }
+.search .hint { color: rgba(243, 245, 255, .7); flex: 1; }
+.search kbd {
+  font-family: var(--mono); font-style: normal; font-size: 11px;
+  border: 1px solid rgba(243, 245, 255, .35); padding: 1px 5px; color: rgba(243, 245, 255, .85);
+}
+.tools { display: flex; align-items: center; gap: 14px; }
+.seg { display: flex; border: 1px solid rgba(243, 245, 255, .45); }
+.seg span { width: 34px; height: 26px; display: grid; place-items: center; }
+.seg span.on { background: var(--foam); color: var(--ultra); }
+.seg span + span { border-left: 1px solid rgba(243, 245, 255, .45); }
+.zoom { display: flex; align-items: center; gap: 8px; }
+.zoom .track { width: 96px; height: 2px; background: rgba(243, 245, 255, .4); position: relative; }
+.zoom .track::after { content: ""; position: absolute; left: 70%; top: -5px; width: 12px; height: 12px; background: var(--foam); }
+.import {
+  display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px;
+  background: var(--foam); color: var(--ultra); font-size: 13px;
+}
+.iconbtn { width: 28px; height: 28px; display: grid; place-items: center; }
+
+/* dither strip under the top bar */
+.strip { display: block; width: 100%; height: 4px; image-rendering: pixelated; }
+
+.body { display: grid; grid-template-columns: 248px 6px 1fr 6px 336px; min-height: 0; }
+.handle { background: var(--navy-1); border-inline: 1px solid var(--rule); position: relative; }
+.handle::after { content: ""; position: absolute; left: 1px; top: 50%; width: 2px; height: 28px; margin-top: -14px; background: var(--haze); }
+
+/* ---------- sidebar ---------- */
+.side { background: var(--navy-1); display: flex; flex-direction: column; min-height: 0; }
+.views { padding: 10px 8px 12px; display: grid; gap: 2px; border-bottom: 1px solid var(--rule); }
+.row {
+  display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 10px;
+  height: 32px; padding: 0 10px; position: relative;
+}
+.row .count { color: var(--haze); font-variant-numeric: tabular-nums; font-size: 12px; }
+.row.on { background: var(--navy-2); }
+.row.on::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: var(--foam); }
+.row.on .count { color: var(--mist); }
+.tagshead { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 8px; }
+.label { font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--mist); }
+.find {
+  margin: 0 12px 8px; height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  background: var(--navy-0); border: 1px solid var(--rule); color: var(--haze); font-style: italic; font-size: 12.5px;
+}
+.tree { padding: 2px 8px; display: grid; gap: 0; overflow: hidden; }
+.tag {
+  display: grid; grid-template-columns: var(--indent, 0px) 14px 16px 1fr auto 16px;
+  align-items: center; gap: 6px; height: 30px; padding: 0 6px 0 8px; position: relative;
+}
+.tag .guide { height: 100%; position: relative; }
+.tag .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tag .count { color: var(--haze); font-size: 12px; font-variant-numeric: tabular-nums; }
+.tag .more { opacity: 0; color: var(--mist); }
+.tag.hover { background: var(--navy-2); }
+.tag.hover .more { opacity: 1; }
+.tag.ref .name { font-style: italic; color: #c8d0ff; }
+.tag.ref .badge {
+  font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--navy-1);
+  background: #c8d0ff; padding: 1px 4px; margin-left: 6px;
+}
+.chev { color: var(--mist); display: grid; place-items: center; }
+
+/* ---------- gallery ---------- */
+.gallery { display: grid; grid-template-rows: 44px 1fr; min-height: 0; background: var(--navy-0); }
+.ghead { display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--rule); }
+.crumbs { display: flex; align-items: baseline; gap: 8px; font-size: 15px; }
+.crumbs .sep { color: var(--haze); }
+.crumbs .n { color: var(--mist); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px;
+  border: 1px solid var(--rule); color: var(--mist); font-size: 12px;
+}
+.chip.query { color: var(--foam); border-color: var(--ultra-hi); background: rgba(26, 35, 222, .25); font-style: italic; }
+.ghead .spacer { flex: 1; }
+.masonry { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px; align-items: start; overflow: hidden; }
+.col { display: grid; gap: 10px; }
+.tile { position: relative; display: block; }
+.tile canvas { display: block; width: 100%; height: auto; }
+.tile.sel { outline: 2px solid var(--foam); outline-offset: 3px; }
+.tile .tick {
+  position: absolute; top: 8px; left: 8px; width: 20px; height: 20px; display: grid; place-items: center;
+  background: var(--foam); color: var(--ultra);
+}
+.tile .star { position: absolute; top: 8px; right: 8px; color: var(--sun); filter: drop-shadow(0 1px 2px #000); }
+.tile .score {
+  position: absolute; bottom: 8px; left: 8px; font-size: 11px; padding: 2px 6px;
+  background: rgba(7, 10, 51, .78); color: var(--foam); font-variant-numeric: tabular-nums;
+}
+
+/* ---------- preview ---------- */
+.preview { background: var(--navy-1); display: flex; flex-direction: column; min-height: 0; }
+.pimg { background: var(--navy-0); padding: 14px; border-bottom: 1px solid var(--rule); }
+.pimg canvas { display: block; width: 100%; height: auto; }
+.pbody { padding: 16px 18px; display: grid; gap: 16px; align-content: start; }
+.fname { font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
+.fname small { display: block; color: var(--haze); font-size: 11.5px; margin-top: 4px; font-family: var(--mono); }
+.meta { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; font-size: 12.5px; }
+.meta dt { color: var(--haze); }
+.meta dd { margin: 0; color: var(--mist); font-variant-numeric: tabular-nums; }
+.section { display: grid; gap: 8px; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tchip { height: 24px; padding: 0 9px; display: inline-flex; align-items: center; gap: 6px; background: var(--navy-2); border: 1px solid var(--rule); font-size: 12px; }
+.tchip.add { background: none; border-style: dashed; color: var(--mist); }
+.sugg { display: grid; gap: 6px; }
+.srow { display: grid; grid-template-columns: 1fr 70px 26px; align-items: center; gap: 10px; font-size: 12.5px; }
+.bar { height: 6px; background: var(--navy-0); position: relative; image-rendering: pixelated; }
+.bar canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.accept { width: 26px; height: 22px; display: grid; place-items: center; border: 1px solid var(--rule); color: var(--mist); font-size: 11px; font-family: var(--mono); }
+.actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.btn { height: 30px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--rule); color: var(--foam); font-size: 12px; }
+.btn.primary { background: var(--foam); color: var(--ultra); border-color: var(--foam); }
+
+/* ---------- status bar ---------- */
+.status {
+  background: var(--navy-1); border-top: 1px solid var(--rule);
+  display: flex; align-items: center; gap: 18px; padding: 0 14px; font-size: 12px; color: var(--mist);
+}
+.status .grow { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.status .mono { font-family: var(--mono); font-size: 11.5px; color: var(--haze); }
+.index { display: flex; align-items: center; gap: 10px; }
+.index .meter { width: 140px; height: 8px; background: var(--navy-0); border: 1px solid var(--rule); position: relative; }
+.index .meter canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.resume { color: var(--foam); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- callout markers ---------- */
+.mk {
+  position: absolute; z-index: 5; width: 22px; height: 22px; display: grid; place-items: center;
+  background: var(--sun); color: #1b1600; font-size: 11.5px; font-weight: 700; font-family: var(--serif);
+  box-shadow: 0 0 0 3px rgba(7, 10, 51, .7);
+}
+
+/* ---------- notes ---------- */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px 28px; }
+.note { display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start; min-width: 0; }
+.note .mk { position: static; box-shadow: none; }
+.note h3 { margin: 0 0 4px; font-size: 15px; font-weight: 400; }
+.note p { margin: 0; color: var(--mist); font-size: 13px; line-height: 1.6; }
+.tokens { display: grid; gap: 12px; }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.sw { border: 1px solid var(--rule); min-width: 0; }
+.sw i { display: block; height: 46px; }
+.sw div { padding: 8px 10px; font-size: 12px; display: grid; gap: 2px; }
+.sw code { font-family: var(--mono); color: var(--mist); font-size: 11.5px; }
+pre {
+  margin: 0; overflow-x: auto; background: var(--navy-1); border: 1px solid var(--rule);
+  padding: 14px 16px; font-family: var(--mono); font-size: 12px; line-height: 1.6; color: var(--mist);
+}
+h2 { font-size: 18px; font-weight: 400; margin: 0; }
+.hero-dither { width: 100%; height: 64px; display: block; image-rendering: pixelated; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="page">
+  <canvas class="hero-dither" id="hero" aria-hidden="true"></canvas>
+  <header class="intro">
+    <span class="eyebrow">Umbra Tags · layout concept · Oct 2026</span>
+    <h1>Ultramarine: the dithered-waves palette on the current three panels</h1>
+    <p>The three-panel shell and masonry gallery stay as they are. Colour comes from the reference image: full ultramarine only on the top bar, and deep blues for the panels so photos still read true. The 1-bit dither texture comes back as a signature in the bars and meters. Numbered markers on the mock link to the notes below.</p>
+  </header>
+
+  <div class="stage" id="stage">
+    <div class="frame" id="frame">
+      <!-- top bar -->
+      <div class="topbar">
+        <div class="menus"><span>File</span><span>Edit</span><span>View</span><span>Help</span></div>
+        <div class="search">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg>
+          <span class="hint">blue city at night</span>
+          <kbd>Ctrl K</kbd>
+        </div>
+        <div class="tools">
+          <div class="seg" aria-label="Layout">
+            <span title="Grid"><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="5" height="5"/><rect x="8" y="1" width="5" height="5"/><rect x="1" y="8" width="5" height="5"/><rect x="8" y="8" width="5" height="5"/></svg></span>
+            <span title="Letterbox"><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="3" width="12" height="8"/></svg></span>
+            <span class="on" title="Masonry"><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="5" height="8"/><rect x="8" y="1" width="5" height="4"/><rect x="1" y="10" width="5" height="3"/><rect x="8" y="6" width="5" height="7"/></svg></span>
+          </div>
+          <div class="zoom"><svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="3" y="3" width="6" height="6"/></svg><div class="track"></div><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="12" height="12"/></svg></div>
+          <span class="iconbtn" title="Preview panel"><svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="14" height="12"/><path d="M10 1v12" /><rect x="10" y="1" width="5" height="12" fill="currentColor"/></svg></span>
+          <span class="import"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 1v8M3.5 5.5L7 9l3.5-3.5M1 12h12"/></svg>Import</span>
+        </div>
+      </div>
+      <canvas class="strip" id="strip" aria-hidden="true"></canvas>
+
+      <div class="body">
+        <!-- sidebar -->
+        <aside class="side">
+          <div class="views">
+            <div class="row on"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3" width="10" height="10"/><path d="M4 1h10v10"/></svg><span>All images</span><span class="count">1,364</span></div>
+            <div class="row"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 2l12 12M3 6V3h3l7 7-3 3-2-2"/></svg><span>Untagged</span><span class="count">581</span></div>
+            <div class="row"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3" width="12" height="4"/><path d="M3 7v6h10V7M6 10h4"/></svg><span>Archived</span><span class="count">6</span></div>
+          </div>
+          <div class="tagshead"><span class="label">Tags</span><svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" stroke-width="1.6"><path d="M7 2v10M2 7h10"/></svg></div>
+          <div class="find"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="5"/><path d="M11 11l4 4"/></svg>Find a tag</div>
+          <div class="tree" id="tree"></div>
+        </aside>
+        <div class="handle"></div>
+
+        <!-- gallery -->
+        <main class="gallery">
+          <div class="ghead">
+            <div class="crumbs"><span>All images</span><span class="sep">/</span><span class="chip query">“blue city at night”</span><span class="n">closest 100 · best 0.140</span></div>
+            <span class="spacer"></span>
+            <span class="chip">Best match ▾</span>
+            <span class="chip">☆ Starred</span>
+          </div>
+          <div class="masonry" id="masonry"></div>
+        </main>
+        <div class="handle"></div>
+
+        <!-- preview -->
+        <aside class="preview">
+          <div class="pimg"><canvas id="pcanvas"></canvas></div>
+          <div class="pbody">
+            <div class="fname">Winter Palace stair<small>d0f58a26885e1408595409a68147ac85.jpg</small></div>
+            <dl class="meta">
+              <dt>Size</dt><dd>750 × 760 px · 184 KB · JPEG</dd>
+              <dt>Added</dt><dd>3 Oct 2026, 14:12</dd>
+              <dt>Match</dt><dd>0.112 to “blue city at night”</dd>
+            </dl>
+            <div class="section">
+              <span class="label">Tags</span>
+              <div class="tags"><span class="tchip">ARKVAIN</span><span class="tchip">asset reference</span><span class="tchip add">+ Add tag</span></div>
+            </div>
+            <div class="section">
+              <span class="label">Suggested child tags</span>
+              <div class="sugg" id="sugg"></div>
+            </div>
+            <div class="actions">
+              <span class="btn primary">Open</span>
+              <span class="btn">Find similar</span>
+              <span class="btn">Resize…</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <!-- status bar -->
+      <div class="status">
+        <span class="grow">Received from browser <span class="mono">9f1bf700f54c6cde1fd314e5758258be.jpg</span></span>
+        <span class="index">Similarity index<span class="meter"><canvas id="meter"></canvas></span><span>596 / 1,370</span><span class="resume">Resume</span></span>
+        <span>1 selected</span>
+      </div>
+
+      <!-- markers -->
+      <span class="mk" style="left:470px;top:12px">1</span>
+      <span class="mk" style="left:2px;top:41px">2</span>
+      <span class="mk" style="left:218px;top:62px">3</span>
+      <span class="mk" style="left:212px;top:308px">4</span>
+      <span class="mk" style="left:212px;top:404px">5</span>
+      <span class="mk" style="left:270px;top:58px">6</span>
+      <span class="mk" style="left:520px;top:404px">7</span>
+      <span class="mk" style="left:1110px;top:534px">8</span>
+      <span class="mk" style="left:1110px;top:648px">9</span>
+      <span class="mk" style="left:1090px;top:868px">10</span>
+    </div>
+  </div>
+
+  <section class="notes" aria-label="What changes">
+    <div class="note"><span class="mk">1</span><div><h3>Search moves to the centre</h3><p>Natural-language search becomes the main control, with a Ctrl K shortcut and an example query as its placeholder. Import moves up from the status bar into the top bar's right end.</p></div></div>
+    <div class="note"><span class="mk">2</span><div><h3>One saturated band</h3><p>Full ultramarine is used only on the top bar, with a 4 px dither strip beneath it. Everything below uses deep blues, so images keep their real colour.</p></div></div>
+    <div class="note"><span class="mk">3</span><div><h3>Counts in their own column</h3><p>View and tag counts sit right-aligned in tabular figures. Long names ellipsize before the count, so “ARKVAIN (34…” becomes “ARKVAIN · 345”.</p></div></div>
+    <div class="note"><span class="mk">4</span><div><h3>Row menus on hover</h3><p>The ⋮ button appears only on the hovered or selected row. That removes a column of 14 dots from the tree. Right-click still opens the same menu.</p></div></div>
+    <div class="note"><span class="mk">5</span><div><h3>Reference tags read at a glance</h3><p>Italic, a paler blue, and a small REF badge, instead of an eye-off icon that looked like a hidden tag.</p></div></div>
+    <div class="note"><span class="mk">6</span><div><h3>Selection bar</h3><p>The active view gets a white edge bar and a lifted fill instead of red text, consistent with the white selection ring on tiles.</p></div></div>
+    <div class="note"><span class="mk">7</span><div><h3>Selection ring and search scores</h3><p>Selected tiles get an offset white ring and a check badge. In search mode each tile shows its similarity score.</p></div></div>
+    <div class="note"><span class="mk">8</span><div><h3>Preview as a detail sheet</h3><p>Filename, then a two-column metadata list (size, added, match score) instead of a large hash in display type. Tags gain an inline “Add tag”.</p></div></div>
+    <div class="note"><span class="mk">9</span><div><h3>AI sort suggestions in place</h3><p>The preview shows the top three suggested tags with dithered confidence bars. The number keys 1–3 accept, the same keys the AI sort review screen uses.</p></div></div>
+    <div class="note"><span class="mk">10</span><div><h3>Indexing as a meter</h3><p>The truncated “Similarity paused · 596 / 1370 i…” becomes a labelled dither meter with a Resume link. The last-received file is set in monospace.</p></div></div>
+  </section>
+
+  <section class="tokens">
+    <h2>Theme tokens</h2>
+    <div class="swatches" id="swatches"></div>
+    <pre id="dart"></pre>
+  </section>
+</div>
+
+<script>
+(() => {
+  const css = getComputedStyle(document.documentElement);
+  const tok = (name) => css.getPropertyValue(name).trim();
+  const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const BLUE = hex(tok('--ultra')), WHITE = hex(tok('--foam'));
+
+  // 8×8 Bayer matrix for ordered dithering.
+  const bayer = (() => {
+    const m = [[0]];
+    let cur = m;
+    for (let n = 1; n < 8; n *= 2) {
+      const next = [];
+      for (let y = 0; y < n * 2; y++) {
+        next.push([]);
+        for (let x = 0; x < n * 2; x++) {
+          const base = cur[y % n][x % n] * 4;
+          const q = (y < n ? 0 : 2) + (x < n ? 0 : 1);
+          next[y].push(base + [0, 2, 3, 1][q]);
+        }
+      }
+      cur = next;
+    }
+    return cur.map((r) => r.map((v) => (v + 0.5) / 64));
+  })();
+
+  // Water-like field: sines whose wavelength shrinks toward the horizon.
+  function waveField(x, y, w, h, seed = 0) {
+    const t = y / h;
+    const persp = 0.25 + 1.6 * t;
+    const u = x / w;
+    const v = Math.pow(t, 1.35);
+    let s = Math.sin((u * 9 + Math.sin(v * 7 + seed) * 0.6) * persp * 3.2 + v * 38 + seed)
+          + 0.6 * Math.sin((u * 23 - v * 3) * persp + v * 71 + seed * 2)
+          + 0.35 * Math.sin(u * 61 * persp + v * 140 + seed * 3);
+    s = (s + 1.95) / 3.9;
+    const glare = Math.max(0, 1 - Math.abs(u - (0.62 + 0.18 * t)) * (2.4 - t)) * (1 - t) * 0.55;
+    return Math.min(1, Math.max(0, s * (0.35 + 0.55 * (1 - t)) + glare - 0.08 + u * 0.12));
+  }
+
+  // Paints a 1-bit dither of a value field into a canvas at its own pixel size.
+  function dither(canvas, w, h, field, on = WHITE, off = BLUE) {
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const lit = field(x, y) > bayer[y % 8][x % 8];
+      const c = lit ? on : off, i = (y * w + x) * 4;
+      img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  dither(document.getElementById('hero'), 720, 32, (x, y) => waveField(x, y + 18, 720, 50, 1.3));
+  dither(document.getElementById('strip'), 720, 2, (x) => 0.18 + 0.22 * Math.sin(x / 9) * Math.sin(x / 31));
+  // Index meter: dense dither for the indexed share, sparse for the rest.
+  dither(document.getElementById('meter'), 70, 4, (x) => (x / 70 < 596 / 1370 ? 0.92 : 0.06), WHITE, hex(tok('--navy-0')));
+
+  // ---------- placeholder "photographs", painted procedurally ----------
+  const rnd = (s) => () => ((s = Math.imul(s ^ (s >>> 15), 2246822507) ^ (s + 0x9e3779b9)) >>> 0) / 4294967296;
+  const scenes = {
+    fog(ctx, w, h, r) {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, '#8b8d92'); g.addColorStop(0.55, '#e9a35e'); g.addColorStop(1, '#55504c');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(30,26,24,.85)';
+      for (let i = 0; i < 4; i++) {
+        const x = w * (0.15 + i * 0.22), bh = h * (0.32 - i * 0.05);
+        ctx.fillRect(x, h * 0.62 - bh, w * 0.05, bh);
+        ctx.beginPath(); ctx.arc(x + w * 0.025, h * 0.62 - bh, w * 0.04, 0, 7); ctx.fill();
+      }
+      ctx.fillRect(0, h * 0.62, w, h * 0.06);
+      ctx.fillStyle = 'rgba(200,190,180,.25)'; ctx.fillRect(0, h * 0.66, w, h * 0.34);
+    },
+    palace(ctx, w, h, r) {
+      ctx.fillStyle = '#d9cbb0'; ctx.fillRect(0, 0, w, h);
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = i % 2 ? '#3b4a68' : '#e9dfca';
+        ctx.fillRect(w * (0.06 + i * 0.16), h * 0.12, w * 0.07, h * 0.6);
+        ctx.fillStyle = '#b8955a'; ctx.fillRect(w * (0.05 + i * 0.16), h * 0.1, w * 0.09, h * 0.03);
+      }
+      for (let i = 0; i < 9; i++) {
+        ctx.fillStyle = i % 2 ? '#c9bea8' : '#efe7d6';
+        ctx.fillRect(w * (0.2 - i * 0.02), h * (0.6 + i * 0.045), w * (0.6 + i * 0.04), h * 0.045);
+      }
+      ctx.fillStyle = 'rgba(40,30,20,.25)';
+      for (let y = 0; y < 4; y++) for (let x = 0; x < 8; x++) if ((x + y) % 2) ctx.fillRect(x * w / 8, h * 0.88 + y * h * 0.03, w / 8, h * 0.03);
+    },
+    product(ctx, w, h, r) {
+      const g = ctx.createRadialGradient(w * 0.5, h * 0.4, 10, w * 0.5, h * 0.5, w * 0.8);
+      g.addColorStop(0, '#f2f2f0'); g.addColorStop(1, '#a9a9a6');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      ctx.save(); ctx.translate(w * 0.5, h * 0.55); ctx.rotate(-0.28);
+      ctx.fillStyle = '#7a4524'; ctx.fillRect(-w * 0.12, -h * 0.05, w * 0.5, h * 0.12);
+      ctx.fillStyle = '#9aa0a8'; ctx.fillRect(-w * 0.42, -h * 0.06, w * 0.34, h * 0.07);
+      ctx.fillStyle = '#5b6068'; ctx.fillRect(-w * 0.2, -h * 0.1, w * 0.12, h * 0.16);
+      ctx.restore();
+      ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.beginPath(); ctx.ellipse(w * 0.5, h * 0.8, w * 0.32, h * 0.04, 0, 0, 7); ctx.fill();
+    },
+    type(ctx, w, h) {
+      ctx.fillStyle = '#fbfbf8'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#141414'; ctx.textAlign = 'center';
+      ctx.font = `${Math.round(h * 0.28)}px "Libre Baskerville", Georgia, serif`;
+      ctx.fillText('ヴァルキリー', w / 2, h * 0.48);
+      ctx.font = `700 ${Math.round(h * 0.2)}px "Libre Baskerville", Georgia, serif`;
+      ctx.fillText('VALKYRIE', w / 2, h * 0.8);
+    },
+    city(ctx, w, h, r) {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, '#2d3fd8'); g.addColorStop(0.3, '#7fa1ff'); g.addColorStop(0.36, '#0c1240'); g.addColorStop(1, '#03051a');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      for (let i = 0; i < 900; i++) {
+        const y = h * (0.36 + Math.pow(r(), 0.8) * 0.64), x = r() * w;
+        ctx.fillStyle = r() < 0.7 ? 'rgba(120,190,255,.9)' : 'rgba(255,215,140,.9)';
+        const s = 0.6 + (y / h) * 2;
+        ctx.fillRect(x, y, s, s);
+      }
+      ctx.fillStyle = '#060a2c'; ctx.fillRect(w * 0.3, h * 0.45, w * 0.18, h * 0.55);
+    },
+    stone(ctx, w, h, r) {
+      const g = ctx.createLinearGradient(0, 0, w, h);
+      g.addColorStop(0, '#d8d2c4'); g.addColorStop(1, '#8e8a83');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#4f5a55';
+      ctx.beginPath(); ctx.moveTo(w * 0.42, h * 0.95); ctx.lineTo(w * 0.46, h * 0.3); ctx.arc(w * 0.5, h * 0.25, w * 0.07, Math.PI, 0); ctx.lineTo(w * 0.6, h * 0.95); ctx.fill();
+      ctx.fillRect(w * 0.53, h * 0.05, w * 0.025, h * 0.25);
+      ctx.fillStyle = 'rgba(120,180,150,.35)'; ctx.fillRect(w * 0.42, h * 0.3, w * 0.18, h * 0.65);
+    },
+    statue(ctx, w, h, r) {
+      ctx.fillStyle = '#1f2a24'; ctx.fillRect(0, 0, w, h);
+      for (let i = 0; i < 2; i++) {
+        ctx.fillStyle = '#c8d35a';
+        const x0 = w * (0.12 + i * 0.44);
+        for (let y = 0; y < 60; y++) for (let x = 0; x < 9; x++) if (r() < 0.62) ctx.fillRect(x0 + x * w * 0.034, h * 0.04 + y * h * 0.012, w * 0.026, h * 0.006);
+      }
+      ctx.fillStyle = '#5fb7a0';
+      ctx.beginPath(); ctx.moveTo(w * 0.24, h * 0.95); ctx.lineTo(w * 0.27, h * 0.55); ctx.lineTo(w * 0.32, h * 0.38); ctx.lineTo(w * 0.34, h * 0.55); ctx.lineTo(w * 0.36, h * 0.95); ctx.fill();
+      ctx.fillStyle = '#0d1210'; ctx.fillRect(0, h * 0.84, w, h * 0.16);
+    },
+    gun(ctx, w, h, r) {
+      ctx.fillStyle = '#4a4b4e'; ctx.fillRect(0, 0, w, h);
+      ctx.save(); ctx.translate(w * 0.45, h * 0.5); ctx.rotate(0.35);
+      ctx.fillStyle = '#6d3d1f'; ctx.fillRect(w * 0.05, -h * 0.06, w * 0.42, h * 0.14);
+      ctx.fillStyle = '#2b2c2f'; ctx.fillRect(-w * 0.45, -h * 0.07, w * 0.52, h * 0.1);
+      ctx.fillStyle = '#a07a3a'; ctx.beginPath(); ctx.arc(-w * 0.05, -h * 0.02, w * 0.06, 0, 7); ctx.fill();
+      ctx.restore();
+    },
+  };
+
+  function paint(canvas, scene, w, h, seed) {
+    const scale = 2;
+    canvas.width = w * scale; canvas.height = h * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    scenes[scene](ctx, w, h, rnd(seed));
+  }
+
+  const tiles = [
+    [['product', 360, 104, 'tick'], ['gun', 360, 250, '0.071'], ['fog', 360, 270, '0.094'], ['gun', 360, 230, '0.066']],
+    [['palace', 360, 236, '0.088'], ['palace', 360, 360, 'sel'], ['stone', 360, 250, '0.079']],
+    [['type', 360, 92, '0.052'], ['product', 360, 236, '0.061'], ['palace', 360, 450, 'star'], ['city', 360, 140, '0.140']],
+  ];
+  const masonry = document.getElementById('masonry');
+  let seed = 7;
+  tiles.forEach((column) => {
+    const col = document.createElement('div');
+    col.className = 'col';
+    column.forEach(([scene, w, h, mark]) => {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      const c = document.createElement('canvas');
+      paint(c, scene, w, h, seed++);
+      c.style.aspectRatio = `${w} / ${h}`;
+      tile.append(c);
+      if (mark === 'sel' || mark === 'tick') {
+        if (mark === 'sel') tile.classList.add('sel');
+        const t = document.createElement('span');
+        t.className = 'tick';
+        t.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6.5l2.5 2.5L10 3"/></svg>';
+        if (mark === 'sel') tile.append(t);
+      }
+      if (mark === 'star') {
+        const s = document.createElement('span'); s.className = 'star'; s.textContent = '★'; tile.append(s);
+      }
+      if (/^0\./.test(mark)) {
+        const s = document.createElement('span'); s.className = 'score'; s.textContent = mark; tile.append(s);
+      }
+      col.append(tile);
+    });
+    masonry.append(col);
+  });
+  // The city tile is the best match: move it to the top of its column.
+  const third = masonry.children[2];
+  third.prepend(third.lastElementChild);
+  paint(document.getElementById('pcanvas'), 'palace', 308, 312, 99);
+
+  // ---------- tag tree with guides ----------
+  const tree = [
+    { name: '3d reference', n: 41, depth: 0, ref: true },
+    { name: 'ARKVAIN', n: 345, depth: 0, open: true },
+    { name: 'asset reference', n: 52, depth: 1, open: true, ref: true },
+    { name: 'artsy', n: 14, depth: 2, last: true },
+    { name: 'cosmetic', n: 12, depth: 1 },
+    { name: 'typography', n: 1, depth: 1 },
+    { name: 'weapon', n: 9, depth: 1, last: true, hover: true },
+    { name: 'game ui', n: 4, depth: 0 },
+    { name: 'giri', n: 49, depth: 0 },
+    { name: 'graphic design', n: 23, depth: 0 },
+    { name: 'ithaca', n: 119, depth: 0, closed: true },
+    { name: 'magic rpg', n: 90, depth: 0, closed: true },
+    { name: 'photos', n: 160, depth: 0 },
+    { name: 'space increments', n: 7, depth: 0 },
+  ];
+  const STEP = 16;
+  const host = document.getElementById('tree');
+  tree.forEach((t, i) => {
+    const row = document.createElement('div');
+    row.className = 'tag' + (t.ref ? ' ref' : '') + (t.hover ? ' hover' : '');
+    row.style.setProperty('--indent', `${t.depth * STEP}px`);
+    // guides: ancestor verticals while their branch continues, then an elbow
+    const g = document.createElement('svg');
+    const continues = (d) => { for (let j = i + 1; j < tree.length; j++) { if (tree[j].depth < d) return false; if (tree[j].depth === d) return true; } return false; };
+    let paths = '';
+    for (let d = 1; d <= t.depth; d++) {
+      const x = (d - 1) * STEP + 7;
+      if (d < t.depth) { if (continues(d)) paths += `M${x} 0V30`; }
+      else paths += `M${x} 0V${continues(d) ? 30 : 15}M${x} 15H${d * STEP + 2}`;
+    }
+    const guide = `<svg class="guide" width="${t.depth * STEP}" height="30" viewBox="0 0 ${t.depth * STEP} 30" style="overflow:visible"><path d="${paths}" stroke="${tok('--haze')}" stroke-width="1" fill="none"/></svg>`;
+    const chev = t.open ? '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3.5l3 3 3-3"/></svg>'
+      : t.closed ? '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 2l3 3-3 3"/></svg>' : '';
+    const icon = t.ref
+      ? '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#c8d0ff" stroke-width="1.3"><path d="M3 1.5h8v11l-4-3-4 3z"/></svg>'
+      : '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 3.5h7l4 3.5-4 3.5h-7z"/></svg>';
+    row.innerHTML = `${guide}<span class="chev">${chev}</span>${icon}<span class="name">${t.name}${t.ref ? '<span class="badge">ref</span>' : ''}</span><span class="count">${t.n}</span><span class="more">⋮</span>`;
+    if (t.depth === 0 && !t.ref) row.querySelector('.name').style.fontWeight = '400';
+    host.append(row);
+  });
+
+  // ---------- suggestions with dithered confidence bars ----------
+  const sugg = [['weapon', 0.82, '12 similar images'], ['cosmetic', 0.41, 'name match'], ['typography', 0.12, '1 image']];
+  const sh = document.getElementById('sugg');
+  sugg.forEach(([name, p, why], i) => {
+    const row = document.createElement('div');
+    row.className = 'srow';
+    row.innerHTML = `<span>${name} <span style="color:${tok('--haze')};font-size:11.5px">· ${why}</span></span><span class="bar"><canvas></canvas></span><span class="accept">${i + 1}</span>`;
+    dither(row.querySelector('canvas'), 35, 3, (x) => (x / 35 < p ? 0.9 : 0.04), WHITE, hex(tok('--navy-0')));
+    sh.append(row);
+  });
+
+  // ---------- token swatches + Flutter mapping ----------
+  const list = [
+    ['--ultra', 'ultra', 'Top bar, dither ink'], ['--navy-0', 'well', 'Gallery background'],
+    ['--navy-1', 'panel', 'Sidebar, preview, status'], ['--navy-2', 'raised', 'Hover, inputs, chips'],
+    ['--rule', 'rule', 'Dividers, outlines'], ['--foam', 'foam', 'Text, selection'],
+    ['--mist', 'mist', 'Secondary text'], ['--haze', 'haze', 'Counts, guides'], ['--sun', 'star', 'Stars only'],
+  ];
+  const sw = document.getElementById('swatches');
+  const dart = ['abstract final class AppColors {'];
+  list.forEach(([v, name, use]) => {
+    const value = tok(v);
+    const el = document.createElement('div');
+    el.className = 'sw';
+    el.innerHTML = `<i style="background:${value}"></i><div><span>${name}</span><code>${value} · ${use}</code></div>`;
+    sw.append(el);
+    dart.push(`  static const ${name} = Color(0xFF${value.slice(1).toUpperCase()}); // ${use}`);
+  });
+  dart.push('}');
+  document.getElementById('dart').textContent = dart.join('\n');
+
+  // ---------- scale the 1440×900 frame to the available width ----------
+  const stage = document.getElementById('stage'), frame = document.getElementById('frame');
+  const fit = () => {
+    const s = Math.min(1, stage.clientWidth / 1440);
+    frame.style.transform = `scale(${s})`;
+    stage.style.height = `${900 * s}px`;
+  };
+  new ResizeObserver(fit).observe(stage);
+  fit();
+})();
+</script>
