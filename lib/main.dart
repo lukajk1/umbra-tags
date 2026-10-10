@@ -165,6 +165,7 @@ class _GalleryPageState extends State<GalleryPage>
   TextQueryVector? _queryVector;
   Map<String, double> _searchScores = {};
   final _searchField = TextEditingController();
+  final _searchFocus = FocusNode();
   static const _textSearchLimit = 100;
 
   /// Sidebar tags whose children are hidden; kept across sessions.
@@ -835,6 +836,7 @@ class _GalleryPageState extends State<GalleryPage>
       if (call.method == 'endSession') _quit();
     });
     _scrollController.addListener(_rememberScrollPosition);
+    HardwareKeyboard.instance.addHandler(_focusSearchOnCtrlK);
     _restoreSession();
   }
 
@@ -2243,7 +2245,9 @@ class _GalleryPageState extends State<GalleryPage>
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_focusSearchOnCtrlK);
     _searchField.dispose();
+    _searchFocus.dispose();
     _rememberScrollPosition();
     _resizeTimer?.cancel();
     _sessionTimer?.cancel();
@@ -2469,9 +2473,27 @@ class _GalleryPageState extends State<GalleryPage>
     );
   }
 
+  /// Ctrl+K from anywhere in the window focuses the search field.
+  bool _focusSearchOnCtrlK(KeyEvent event) {
+    if (event is! KeyDownEvent ||
+        event.logicalKey != LogicalKeyboardKey.keyK ||
+        !HardwareKeyboard.instance.isControlPressed ||
+        _library == null ||
+        !mounted) {
+      return false;
+    }
+    _searchFocus.requestFocus();
+    _searchField.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _searchField.text.length,
+    );
+    return true;
+  }
+
   Widget _searchBox() => TextField(
     key: const ValueKey('text-search'),
     controller: _searchField,
+    focusNode: _searchFocus,
     enabled: _library != null,
     onSubmitted: _searchByText,
     textInputAction: TextInputAction.search,
@@ -2487,7 +2509,7 @@ class _GalleryPageState extends State<GalleryPage>
       hintText: 'Describe an image… e.g. blue city at night',
       prefixIcon: const Icon(Icons.search, size: 18),
       suffixIcon: _textQuery == null
-          ? null
+          ? const _KeyCap('Ctrl K')
           : IconButton(
               tooltip: 'Clear search',
               icon: const Icon(Icons.close, size: 18),
@@ -3501,6 +3523,34 @@ class GalleryTile extends StatelessWidget {
       );
     }
   }
+}
+
+/// A keyboard shortcut hint, drawn like a key cap.
+class _KeyCap extends StatelessWidget {
+  const _KeyCap(this.label);
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(right: 8),
+    child: Align(
+      widthFactor: 1,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0x59F3F5FF)),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Consolas',
+            fontSize: 11,
+            color: Color(0xD9F3F5FF),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// A context menu entry with a leading icon.

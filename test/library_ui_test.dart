@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_gallery_test/main.dart';
 import 'package:flutter_gallery_test/storage/library_store.dart';
@@ -78,6 +79,14 @@ void main() {
           find.byType(CircularProgressIndicator).evaluate().isEmpty,
     );
     expect(File(p.join(root.path, 'library.json')).existsSync(), isTrue);
+    // Ctrl+K focuses the search field from anywhere.
+    final search = find.byKey(const ValueKey('text-search'));
+    expect(find.text('Ctrl K'), findsOneWidget);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    expect(tester.widget<TextField>(search).focusNode!.hasFocus, isTrue);
     await tester.tap(find.text('Import'));
     await _until(
       tester,
