@@ -110,7 +110,12 @@ class AiSortSetupDialog extends StatefulWidget {
     required this.untagged,
     required this.narrowable,
     this.initialParent,
+    this.selectionCount,
   });
+
+  /// Set when sorting a selection: every selected image is sorted, whatever
+  /// tags it already has.
+  final int? selectionCount;
 
   final List<LibraryTag> tags;
 
@@ -145,12 +150,15 @@ class _AiSortSetupDialogState extends State<AiSortSetupDialog> {
   Widget build(BuildContext context) {
     final topLevel = childTags(null, widget.tags).length;
     final parents = _parents;
+    final selection = widget.selectionCount;
     final count = _narrow
         ? widget.narrowable[_parent] ?? 0
         : (topLevel == 0 ? 0 : widget.untagged);
     final muted = Theme.of(context).textTheme.bodySmall;
     return AlertDialog(
-      title: const Text('AI sort'),
+      title: Text(
+        selection == null ? 'AI sort' : 'AI sort · $selection selected',
+      ),
       content: SizedBox(
         width: 460,
         child: RadioGroup<bool>(
@@ -169,9 +177,15 @@ class _AiSortSetupDialogState extends State<AiSortSetupDialog> {
               RadioListTile<bool>(
                 value: false,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Sort untagged images into top-level tags'),
+                title: Text(
+                  selection == null
+                      ? 'Sort untagged images into top-level tags'
+                      : 'Sort into top-level tags',
+                ),
                 subtitle: Text(
-                  '${widget.untagged} untagged · $topLevel top-level tags',
+                  selection == null
+                      ? '${widget.untagged} untagged · $topLevel top-level tags'
+                      : '$topLevel top-level tags',
                   style: muted,
                 ),
               ),
@@ -179,11 +193,17 @@ class _AiSortSetupDialogState extends State<AiSortSetupDialog> {
                 value: true,
                 contentPadding: EdgeInsets.zero,
                 enabled: parents.isNotEmpty,
-                title: const Text('Narrow a tag into its child tags'),
+                title: Text(
+                  selection == null
+                      ? 'Narrow a tag into its child tags'
+                      : 'Sort into a tag\'s child tags',
+                ),
                 subtitle: parents.isEmpty
                     ? Text('No tag has child tags yet', style: muted)
                     : Text(
-                        'Images tagged with the parent but none of its children',
+                        selection == null
+                            ? 'Images tagged with the parent but none of its children'
+                            : 'Suggests only the chosen tag\'s children',
                         style: muted,
                       ),
               ),
@@ -203,7 +223,9 @@ class _AiSortSetupDialogState extends State<AiSortSetupDialog> {
                         DropdownMenuItem(
                           value: tag.id,
                           child: Text(
-                            '${tag.name} (${widget.narrowable[tag.id]} to narrow)',
+                            selection == null
+                                ? '${tag.name} (${widget.narrowable[tag.id]} to narrow)'
+                                : tag.name,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),

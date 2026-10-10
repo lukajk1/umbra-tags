@@ -2109,8 +2109,13 @@ class _GalleryPageState extends State<GalleryPage>
   /// AI sort into existing tags, one image at a time. Without [parent],
   /// untagged images are sorted into top-level tags; with it, images tagged
   /// [parent] (and none of its children) into its children. [chooseMode]
-  /// first asks which of the two to run.
-  void _aiSort({LibraryTag? parent, bool chooseMode = false}) => _run(() async {
+  /// first asks which of the two to run. With [selection], exactly those
+  /// images are sorted, whatever tags they already have.
+  void _aiSort({
+    LibraryTag? parent,
+    bool chooseMode = false,
+    List<LibraryAsset>? selection,
+  }) => _run(() async {
     final library = _library;
     final similarity = _similarity;
     if (library == null) return;
@@ -2123,7 +2128,45 @@ class _GalleryPageState extends State<GalleryPage>
         .toList();
     if (!mounted || !identical(library, _library)) return;
     var target = parent;
-    if (chooseMode) {
+    final picked = selection == null
+        ? null
+        : active.where((a) => selection.any((s) => s.id == a.id)).toList();
+    if (picked != null) {
+      if (picked.isEmpty) return;
+      // Start on the most specific tag with children that every selected
+      // image carries, if any.
+      final shared = tags.where(
+        (tag) =>
+            tags.any((child) => child.parentId == tag.id) &&
+            picked.every((a) => a.tagIds.contains(tag.id)),
+      );
+      int depth(LibraryTag tag) {
+        var d = 0;
+        for (var id = tag.parentId; id != null; d++) {
+          id = tags.where((t) => t.id == id).firstOrNull?.parentId;
+        }
+        return d;
+      }
+
+      final plan = await showDialog<AiSortPlan>(
+        context: context,
+        builder: (_) => AiSortSetupDialog(
+          tags: tags,
+          untagged: picked.length,
+          narrowable: {
+            for (final tag in tags)
+              if (tags.any((child) => child.parentId == tag.id))
+                tag.id: picked.length,
+          },
+          initialParent: shared.isEmpty
+              ? null
+              : shared.reduce((a, b) => depth(a) >= depth(b) ? a : b).id,
+          selectionCount: picked.length,
+        ),
+      );
+      if (plan == null || !mounted) return;
+      target = plan.parent;
+    } else if (chooseMode) {
       final plan = await showDialog<AiSortPlan>(
         context: context,
         builder: (_) => AiSortSetupDialog(
@@ -2141,9 +2184,11 @@ class _GalleryPageState extends State<GalleryPage>
       target = plan.parent;
     }
     final candidates = childTags(target?.id, tags);
-    final queue = target == null
-        ? active.where((a) => a.tagIds.isEmpty).toList()
-        : narrowQueue(target, tags, active);
+    final queue =
+        picked ??
+        (target == null
+            ? active.where((a) => a.tagIds.isEmpty).toList()
+            : narrowQueue(target, tags, active));
     if (candidates.isEmpty || queue.isEmpty) {
       setState(
         () => _status = candidates.isEmpty
@@ -3277,6 +3322,9 @@ class _GalleryPageState extends State<GalleryPage>
                                     onClassify: _busy
                                         ? null
                                         : _classifySelection,
+                                    onAiSort: _busy || _showArchived
+                                        ? null
+                                        : () => _aiSort(selection: _selection),
                                     onSimilar: _busy
                                         ? null
                                         : () => _findSimilar(_assets[index]),
@@ -3353,6 +3401,9 @@ class _GalleryPageState extends State<GalleryPage>
                                     onClassify: _busy
                                         ? null
                                         : _classifySelection,
+                                    onAiSort: _busy || _showArchived
+                                        ? null
+                                        : () => _aiSort(selection: _selection),
                                     onSimilar: _busy
                                         ? null
                                         : () => _findSimilar(_assets[index]),
@@ -3662,6 +3713,7 @@ class GalleryTile extends StatelessWidget {
     this.archived = false,
     this.onDelete,
     this.onClassify,
+    this.onAiSort,
     this.onRefine,
     this.canRefine,
     this.onSimilar,
@@ -3690,6 +3742,7 @@ class GalleryTile extends StatelessWidget {
       onDelete,
       onRefine,
       onClassify,
+      onAiSort,
       onSimilar,
       onResize;
 
@@ -3850,6 +3903,11 @@ class GalleryTile extends StatelessWidget {
         if (onRefine != null && (canRefine?.call() ?? false))
           const PopupMenuItem(value: 'refine', child: Text('AI refine tags…')),
         PopupMenuItem(
+          value: 'aiSort',
+          enabled: onAiSort != null,
+          child: const _MenuLabel(Icons.auto_awesome_outlined, 'AI sort…'),
+        ),
+        PopupMenuItem(
           value: 'classify',
           enabled: onClassify != null,
           child: const Text('ML classify'),
@@ -3878,6 +3936,7 @@ class GalleryTile extends StatelessWidget {
     if (choice == 'delete' && context.mounted) onDelete?.call();
     if (choice == 'refine' && context.mounted) onRefine?.call();
     if (choice == 'classify' && context.mounted) onClassify?.call();
+    if (choice == 'aiSort' && context.mounted) onAiSort?.call();
     if (choice == 'similar' && context.mounted) onSimilar?.call();
     if (choice == 'resize' && context.mounted) onResize?.call();
     if (choice == 'info' && context.mounted) {

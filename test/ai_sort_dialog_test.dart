@@ -183,6 +183,42 @@ void main() {
     expect([for (final t in childTags(null, tags)) t.id], ['ark', 'other']);
   });
 
+  testWidgets('setup dialog for a selection starts on the shared parent', (
+    tester,
+  ) async {
+    AiSortPlan? plan;
+    final parent = _tag('ark');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async => plan = await showDialog<AiSortPlan>(
+              context: context,
+              builder: (_) => AiSortSetupDialog(
+                tags: [
+                  parent,
+                  _tag('weapon', parent: 'ark'),
+                ],
+                untagged: 4,
+                narrowable: {'ark': 4},
+                initialParent: 'ark',
+                selectionCount: 4,
+              ),
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('AI sort · 4 selected'), findsOneWidget);
+    expect(find.text('Sort into top-level tags'), findsOneWidget);
+    await tester.tap(find.text('Start (4)'));
+    await tester.pumpAndSettle();
+    expect(plan?.parent?.id, 'ark');
+  });
+
   testWidgets('setup dialog picks a mode', (tester) async {
     AiSortPlan? plan;
     final parent = _tag('ark');
