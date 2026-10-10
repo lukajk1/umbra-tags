@@ -14,6 +14,16 @@ enum GalleryOrder {
   final String label;
 }
 
+/// A button at the end of the breadcrumb strip, e.g. "AI sort into tags…".
+class ViewAction {
+  const ViewAction(this.label, this.onPressed, {this.key});
+  final String label;
+
+  /// Null while unavailable (e.g. the app is busy).
+  final VoidCallback? onPressed;
+  final Key? key;
+}
+
 /// A strip above the gallery naming the open view, e.g.
 /// "All images › magic rpg › env". Earlier crumbs navigate to that view.
 class ViewBreadcrumbs extends StatelessWidget {
@@ -28,6 +38,7 @@ class ViewBreadcrumbs extends StatelessWidget {
     this.onToggleStarred,
     this.order = GalleryOrder.newest,
     this.onOrder,
+    this.action,
   });
 
   final List<LibraryTag> tags;
@@ -46,6 +57,9 @@ class ViewBreadcrumbs extends StatelessWidget {
   /// Choosing Random again reshuffles.
   final GalleryOrder order;
   final ValueChanged<GalleryOrder>? onOrder;
+
+  /// An action for the open view, shown before the order menu.
+  final ViewAction? action;
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +110,13 @@ class ViewBreadcrumbs extends StatelessWidget {
               ),
             ),
           ),
+          if (action case final action?)
+            TextButton.icon(
+              key: action.key,
+              onPressed: action.onPressed,
+              icon: const Icon(Icons.auto_awesome_outlined, size: 16),
+              label: Text(action.label, style: const TextStyle(fontSize: 13)),
+            ),
           _OrderMenu(order: order, onSelected: onOrder),
           const SizedBox(width: 4),
           _StarredToggle(on: starredOnly, onTap: onToggleStarred),

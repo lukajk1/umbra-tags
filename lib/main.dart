@@ -31,6 +31,7 @@ import 'widgets/downloads_import_dialog.dart';
 import 'widgets/exact_masonry.dart';
 import 'widgets/view_breadcrumbs.dart';
 import 'widgets/resize_dialog.dart';
+import 'widgets/ai_sort_dialog.dart';
 import 'theme.dart';
 
 void main() async {
@@ -1639,6 +1640,26 @@ class _GalleryPageState extends State<GalleryPage>
     await _reload();
   });
 
+  /// The breadcrumb strip's AI sort shortcut for the open view: sort
+  /// Untagged into top-level tags, or a tag with children into them.
+  ViewAction? get _aiSortAction {
+    if (_library == null || _showArchived || _textQuery != null) return null;
+    if (_untagged) {
+      return ViewAction(
+        'AI sort into tags…',
+        _busy ? null : () => _aiSort(),
+        key: const ValueKey('ai-sort-untagged'),
+      );
+    }
+    final tag = _tags.where((t) => t.id == _tagFilter).firstOrNull;
+    if (tag == null || !_tags.any((t) => t.parentId == tag.id)) return null;
+    return ViewAction(
+      'Sort into child tags…',
+      _busy ? null : () => _aiSort(parent: tag),
+      key: const ValueKey('ai-sort-children'),
+    );
+  }
+
   bool _canRefineSelection() => _selection.any(
     (asset) =>
         !asset.missing &&
@@ -2077,6 +2098,164 @@ class _GalleryPageState extends State<GalleryPage>
     }
   });
 
+  /// Text-encoder vectors of tag names, keyed by image model key and name.
+  final Map<String, List<double>> _tagNameVectors = {};
+
+  /// AI sort into existing tags, one image at a time. Without [parent],
+  /// untagged images are sorted into top-level tags; with it, images tagged
+  /// [parent] (and none of its children) into its children. [chooseMode]
+  /// first asks which of the two to run.
+  void _aiSort({LibraryTag? parent, bool chooseMode = false}) => _run(() async {
+    final library = _library;
+    final similarity = _similarity;
+    if (library == null) return;
+    if (similarity == null) {
+      throw LibraryException('Similarity search is not running.');
+    }
+    final tags = await library.tags();
+    final active = (await library.assets())
+        .where((asset) => !asset.missing && !_hiddenIds.contains(asset.id))
+        .toList();
+    if (!mounted || !identical(library, _library)) return;
+    var target = parent;
+    if (chooseMode) {
+      final plan = await showDialog<AiSortPlan>(
+        context: context,
+        builder: (_) => AiSortSetupDialog(
+          tags: tags,
+          untagged: active.where((a) => a.tagIds.isEmpty).length,
+          narrowable: {
+            for (final tag in tags)
+              if (tags.any((child) => child.parentId == tag.id))
+                tag.id: narrowQueue(tag, tags, active).length,
+          },
+          initialParent: target?.id,
+        ),
+      );
+      if (plan == null || !mounted) return;
+      target = plan.parent;
+    }
+    final candidates = childTags(target?.id, tags);
+    final queue = target == null
+        ? active.where((a) => a.tagIds.isEmpty).toList()
+        : narrowQueue(target, tags, active);
+    if (candidates.isEmpty || queue.isEmpty) {
+      setState(
+        () => _status = candidates.isEmpty
+            ? 'AI sort needs ${target == null ? 'top-level tags' : 'child tags under “${target.name}”'}'
+            : 'Nothing to sort: ${target == null ? 'no untagged images' : 'every image in “${target.name}” already has a child tag'}',
+      );
+      return;
+    }
+    await similarity.start();
+    if (similarity.error != null || similarity.model == null) {
+      throw LibraryException(
+        'The similarity index needs attention: ${similarity.error}',
+      );
+    }
+    final key = similarity.model!.key;
+    setState(() => _status = 'Preparing AI sort…');
+    // Tag names are a secondary signal: without the text encoder, sort by
+    // the images already in each tag alone.
+    final notices = <String>[];
+    final names = <String, List<double>>{};
+    try {
+      for (final tag in candidates) {
+        final cacheKey = '$key|${tag.name}';
+        var vector = _tagNameVectors[cacheKey];
+        if (vector == null) {
+          final embedded = await _suggestionBackend.embedText(tag.name);
+          if (embedded.embeddingKey != key) {
+            throw StateError('the text and image models do not match');
+          }
+          vector = _tagNameVectors[cacheKey] = embedded.vector;
+        }
+        names[tag.id] = vector;
+      }
+    } catch (error) {
+      names.clear();
+      notices.add(
+        'Tag names are not used ($error); suggestions come from the images '
+        'already in each tag.',
+      );
+    }
+    if (!mounted || !identical(library, _library)) return;
+    final references = candidates.where((t) => t.isReference).length;
+    if (references > 0) {
+      notices.add(
+        '$references reference ${references == 1 ? 'tag is' : 'tags are'} '
+        'among the choices: images sorted there only show when you filter '
+        'by that tag.',
+      );
+    }
+    final byId = {for (final tag in candidates) tag.id: tag};
+    final session = '${library.id}/${DateTime.now().microsecondsSinceEpoch}';
+    AiSortResult? result;
+    try {
+      result = await showDialog<AiSortResult>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AiSortDialog(
+          title: target == null
+              ? 'Sort untagged images'
+              : 'Narrow “${target.name}”',
+          queue: queue,
+          candidates: candidates,
+          notice: notices.isEmpty ? null : notices.join('\n'),
+          thumbnail: library.thumbnail,
+          score: (asset) async {
+            if (_closingWindow || !identical(library, _library)) {
+              throw StateError('Library closed.');
+            }
+            // Indexes the image first when it has no vector yet.
+            await similarity.ensure(asset);
+            final rows =
+                (await library.similarity({
+                          'op': 'sortScores',
+                          'key': key,
+                          'session': session,
+                          'candidates': [
+                            for (final tag in candidates)
+                              {'id': tag.id, 'nameVector': names[tag.id]},
+                          ],
+                          'assetIds': [asset.id],
+                        })
+                        as Map)[asset.id]
+                    as List?;
+            if (rows == null) {
+              throw StateError('This image has no similarity vector yet.');
+            }
+            return [
+              for (final row in rows.cast<Map>())
+                AiSortSuggestion.fromMap(row, byId[row['tagId']]!),
+            ];
+          },
+          apply: (asset, tag) =>
+              library.editTags([asset.id], add: [tag.id], remove: const []),
+          undo: (asset, tag) =>
+              library.editTags([asset.id], add: const [], remove: [tag.id]),
+        ),
+      );
+    } finally {
+      if (identical(library, _library)) {
+        try {
+          await library.similarity({'op': 'sortEnd'});
+        } catch (_) {}
+      }
+      if (mounted && !_closingWindow && identical(library, _library)) {
+        await _reload();
+      }
+    }
+    if (mounted && result != null) {
+      final done = result;
+      setState(
+        () => _status =
+            'AI sort: tagged ${done.accepted}, skipped ${done.skipped}'
+            '${done.remaining > 0 ? ', ${done.remaining} not reviewed' : ''}',
+      );
+    }
+  });
+
   /// Replaces the library copy of [asset] with a [width]×[height] version and
   /// sends the previous file to the Recycle Bin.
   Future<void> _applyResize(
@@ -2450,17 +2629,29 @@ class _GalleryPageState extends State<GalleryPage>
         segments: const [
           ButtonSegment(
             value: LayoutMode.crop,
-            icon: Icon(Icons.grid_view_rounded, size: 18, semanticLabel: 'Crop'),
+            icon: Icon(
+              Icons.grid_view_rounded,
+              size: 18,
+              semanticLabel: 'Crop',
+            ),
             tooltip: 'Crop — fill uniform tiles',
           ),
           ButtonSegment(
             value: LayoutMode.letterbox,
-            icon: Icon(Icons.fit_screen_rounded, size: 18, semanticLabel: 'Fit'),
+            icon: Icon(
+              Icons.fit_screen_rounded,
+              size: 18,
+              semanticLabel: 'Fit',
+            ),
             tooltip: 'Fit — show the whole image',
           ),
           ButtonSegment(
             value: LayoutMode.masonry,
-            icon: Icon(Icons.view_quilt_rounded, size: 18, semanticLabel: 'Masonry'),
+            icon: Icon(
+              Icons.view_quilt_rounded,
+              size: 18,
+              semanticLabel: 'Masonry',
+            ),
             tooltip: 'Masonry — arrange by image proportions',
           ),
         ],
@@ -2644,144 +2835,162 @@ class _GalleryPageState extends State<GalleryPage>
           preferredSize: Size.fromHeight(4),
           child: RepaintBoundary(child: DitherStrip()),
         ),
-        title: _topBar(MenuBar(
-          style: const MenuStyle(
-            backgroundColor: WidgetStatePropertyAll(Colors.transparent),
-            elevation: WidgetStatePropertyAll(0),
-            padding: WidgetStatePropertyAll(EdgeInsets.zero),
+        title: _topBar(
+          MenuBar(
+            style: const MenuStyle(
+              backgroundColor: WidgetStatePropertyAll(Colors.transparent),
+              elevation: WidgetStatePropertyAll(0),
+              padding: WidgetStatePropertyAll(EdgeInsets.zero),
+            ),
+            children: [
+              SubmenuButton(
+                menuChildren: [
+                  MenuItemButton(
+                    onPressed: _busy ? null : _createLibrary,
+                    child: const Text('New library…'),
+                  ),
+                  MenuItemButton(
+                    onPressed: _busy ? null : _openLibrary,
+                    child: const Text('Open library…'),
+                  ),
+                  MenuItemButton(
+                    onPressed: _busy || _library == null ? null : _importImages,
+                    child: const Text('Import images…'),
+                  ),
+                  MenuItemButton(
+                    onPressed: _busy || _library == null
+                        ? null
+                        : _importFromDownloads,
+                    child: const Text('Import from Downloads…'),
+                  ),
+                  MenuItemButton(
+                    onPressed: _busy || _library == null
+                        ? null
+                        : _backupLibrary,
+                    child: const Text('Back up metadata'),
+                  ),
+                  MenuItemButton(
+                    onPressed: _busy || _library == null ? null : _closeLibrary,
+                    child: const Text('Close library'),
+                  ),
+                  const Divider(),
+                  MenuItemButton(
+                    onPressed: _busy ? null : _quit,
+                    child: const Text('Quit'),
+                  ),
+                ],
+                child: const Text('File'),
+              ),
+              SubmenuButton(
+                menuChildren: [
+                  MenuItemButton(
+                    onPressed: _imagePaths.isEmpty
+                        ? null
+                        : () {
+                            _galleryFocus.requestFocus();
+                            setState(() => _selectedPaths.addAll(_imagePaths));
+                          },
+                    child: const Text('Select all'),
+                  ),
+                  MenuItemButton(
+                    onPressed: _busy || _selectedPaths.isEmpty
+                        ? null
+                        : _editSelectionTags,
+                    child: const Text('Edit tags…'),
+                  ),
+                  MenuItemButton(
+                    onPressed: _busy || _selectedPaths.isEmpty
+                        ? null
+                        : _classifySelection,
+                    child: const Text('ML classify'),
+                  ),
+                  MenuItemButton(
+                    onPressed: _busy || _library == null
+                        ? null
+                        : () => _aiSort(chooseMode: true),
+                    child: const Text('AI sort…'),
+                  ),
+                  MenuItemButton(
+                    onPressed: _busy || _library == null
+                        ? null
+                        : _resizeLargeImages,
+                    child: const Text('Resize large images…'),
+                  ),
+                  MenuItemButton(
+                    onPressed: _busy || _warmingModels || !_sessionRestored
+                        ? null
+                        : _configureOptions,
+                    child: const Text('Options…'),
+                  ),
+                  MenuItemButton(
+                    onPressed: _busy || _selectedPaths.isEmpty
+                        ? null
+                        : _archiveSelection,
+                    child: Text(
+                      _showArchived ? 'Restore selected' : 'Archive selected',
+                    ),
+                  ),
+                ],
+                child: const Text('Edit'),
+              ),
+              SubmenuButton(
+                menuChildren: [
+                  MenuItemButton(
+                    onPressed: () {
+                      setState(
+                        () => _tileSize = (_tileSize + 25).clamp(50, 400),
+                      );
+                      _persistSession();
+                    },
+                    child: const Text('Zoom in'),
+                  ),
+                  MenuItemButton(
+                    onPressed: _busy || _library == null
+                        ? null
+                        : () => _run(() async {
+                            _showArchived = !_showArchived;
+                            _untagged = false;
+                            _tagFilter = null;
+                            await _reload();
+                          }),
+                    child: Text(
+                      _showArchived ? 'Show library' : 'Show archive',
+                    ),
+                  ),
+                  MenuItemButton(
+                    onPressed: _busy || _library == null
+                        ? null
+                        : _refreshLibrary,
+                    child: const Text('Refresh files'),
+                  ),
+                  MenuItemButton(
+                    onPressed: () {
+                      setState(
+                        () => _tileSize = (_tileSize - 25).clamp(50, 400),
+                      );
+                      _persistSession();
+                    },
+                    child: const Text('Zoom out'),
+                  ),
+                ],
+                child: const Text('View'),
+              ),
+              SubmenuButton(
+                menuChildren: [
+                  MenuItemButton(
+                    onPressed: () => showAboutDialog(
+                      context: context,
+                      applicationName: 'Umbra Tags',
+                      applicationVersion: 'Library format 1',
+                    ),
+                    child: const Text('About'),
+                  ),
+                ],
+                child: const Text('Help'),
+              ),
+            ],
           ),
-          children: [
-            SubmenuButton(
-              menuChildren: [
-                MenuItemButton(
-                  onPressed: _busy ? null : _createLibrary,
-                  child: const Text('New library…'),
-                ),
-                MenuItemButton(
-                  onPressed: _busy ? null : _openLibrary,
-                  child: const Text('Open library…'),
-                ),
-                MenuItemButton(
-                  onPressed: _busy || _library == null ? null : _importImages,
-                  child: const Text('Import images…'),
-                ),
-                MenuItemButton(
-                  onPressed: _busy || _library == null
-                      ? null
-                      : _importFromDownloads,
-                  child: const Text('Import from Downloads…'),
-                ),
-                MenuItemButton(
-                  onPressed: _busy || _library == null ? null : _backupLibrary,
-                  child: const Text('Back up metadata'),
-                ),
-                MenuItemButton(
-                  onPressed: _busy || _library == null ? null : _closeLibrary,
-                  child: const Text('Close library'),
-                ),
-                const Divider(),
-                MenuItemButton(
-                  onPressed: _busy ? null : _quit,
-                  child: const Text('Quit'),
-                ),
-              ],
-              child: const Text('File'),
-            ),
-            SubmenuButton(
-              menuChildren: [
-                MenuItemButton(
-                  onPressed: _imagePaths.isEmpty
-                      ? null
-                      : () {
-                          _galleryFocus.requestFocus();
-                          setState(() => _selectedPaths.addAll(_imagePaths));
-                        },
-                  child: const Text('Select all'),
-                ),
-                MenuItemButton(
-                  onPressed: _busy || _selectedPaths.isEmpty
-                      ? null
-                      : _editSelectionTags,
-                  child: const Text('Edit tags…'),
-                ),
-                MenuItemButton(
-                  onPressed: _busy || _selectedPaths.isEmpty
-                      ? null
-                      : _classifySelection,
-                  child: const Text('ML classify'),
-                ),
-                MenuItemButton(
-                  onPressed: _busy || _library == null
-                      ? null
-                      : _resizeLargeImages,
-                  child: const Text('Resize large images…'),
-                ),
-                MenuItemButton(
-                  onPressed: _busy || _warmingModels || !_sessionRestored
-                      ? null
-                      : _configureOptions,
-                  child: const Text('Options…'),
-                ),
-                MenuItemButton(
-                  onPressed: _busy || _selectedPaths.isEmpty
-                      ? null
-                      : _archiveSelection,
-                  child: Text(
-                    _showArchived ? 'Restore selected' : 'Archive selected',
-                  ),
-                ),
-              ],
-              child: const Text('Edit'),
-            ),
-            SubmenuButton(
-              menuChildren: [
-                MenuItemButton(
-                  onPressed: () {
-                    setState(() => _tileSize = (_tileSize + 25).clamp(50, 400));
-                    _persistSession();
-                  },
-                  child: const Text('Zoom in'),
-                ),
-                MenuItemButton(
-                  onPressed: _busy || _library == null
-                      ? null
-                      : () => _run(() async {
-                          _showArchived = !_showArchived;
-                          _untagged = false;
-                          _tagFilter = null;
-                          await _reload();
-                        }),
-                  child: Text(_showArchived ? 'Show library' : 'Show archive'),
-                ),
-                MenuItemButton(
-                  onPressed: _busy || _library == null ? null : _refreshLibrary,
-                  child: const Text('Refresh files'),
-                ),
-                MenuItemButton(
-                  onPressed: () {
-                    setState(() => _tileSize = (_tileSize - 25).clamp(50, 400));
-                    _persistSession();
-                  },
-                  child: const Text('Zoom out'),
-                ),
-              ],
-              child: const Text('View'),
-            ),
-            SubmenuButton(
-              menuChildren: [
-                MenuItemButton(
-                  onPressed: () => showAboutDialog(
-                    context: context,
-                    applicationName: 'Umbra Tags',
-                    applicationVersion: 'Library format 1',
-                  ),
-                  child: const Text('About'),
-                ),
-              ],
-              child: const Text('Help'),
-            ),
-          ],
-        )),
+        ),
         titleSpacing: 0,
       ),
       bottomNavigationBar: Container(
@@ -2914,6 +3123,7 @@ class _GalleryPageState extends State<GalleryPage>
                   onEdit: (tag) => _editTag(tag: tag),
                   onDelete: _deleteTag,
                   onFindMatches: _findTagMatches,
+                  onSortChildren: (tag) => _aiSort(parent: tag),
                   onToggleExcluded: _toggleTagExcluded,
                   collapsedTags: _collapsedTags,
                   onToggleCollapsed: (id) {
@@ -2957,6 +3167,7 @@ class _GalleryPageState extends State<GalleryPage>
                         onToggleStarred: _busy ? null : _toggleStarredOnly,
                         order: _order,
                         onOrder: _busy ? null : _setOrder,
+                        action: _aiSortAction,
                       ),
                       Expanded(
                         child: GalleryDropTarget(

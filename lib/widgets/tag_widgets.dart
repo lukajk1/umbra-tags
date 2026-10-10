@@ -192,6 +192,7 @@ class TagSidebar extends StatefulWidget {
     required this.onEdit,
     required this.onDelete,
     this.onFindMatches,
+    this.onSortChildren,
     this.onToggleExcluded,
     this.viewCounts = const {},
     this.collapsedTags = const {},
@@ -210,6 +211,10 @@ class TagSidebar extends StatefulWidget {
   final ValueChanged<String?> onCreate;
   final ValueChanged<LibraryTag> onEdit, onDelete;
   final ValueChanged<LibraryTag>? onFindMatches;
+
+  /// AI sort of the tag's images into its child tags; offered only for tags
+  /// that have children.
+  final ValueChanged<LibraryTag>? onSortChildren;
 
   /// Toggles whether the tag is a reference tag, whose images only appear
   /// when filtering by it (or one of its descendants).
@@ -233,12 +238,16 @@ class _TagSidebarState extends State<TagSidebar> {
     if (action == 'edit') widget.onEdit(tag);
     if (action == 'delete') widget.onDelete(tag);
     if (action == 'match') widget.onFindMatches?.call(tag);
+    if (action == 'sort') widget.onSortChildren?.call(tag);
     if (action == 'exclude') widget.onToggleExcluded?.call(tag);
   }
 
   List<PopupMenuEntry<String>> _menuItems(LibraryTag tag) => [
     if (widget.onFindMatches != null)
       const PopupMenuItem(value: 'match', child: Text('Find matching images…')),
+    if (widget.onSortChildren != null &&
+        widget.tags.any((child) => child.parentId == tag.id))
+      const PopupMenuItem(value: 'sort', child: Text('Sort into child tags…')),
     if (widget.onToggleExcluded != null)
       PopupMenuItem(
         value: 'exclude',
