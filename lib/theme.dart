@@ -176,57 +176,6 @@ ThemeData buildAppTheme() {
   );
 }
 
-/// A 1-bit ordered-dither band of white on ultramarine, like the waves in the
-/// reference image. [density] is the mean share of white pixels.
-class DitherStrip extends StatelessWidget {
-  const DitherStrip({super.key, this.height = 4, this.density = 0.22});
-  final double height, density;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: height,
-    width: double.infinity,
-    child: CustomPaint(painter: _DitherPainter(density)),
-  );
-}
-
-class _DitherPainter extends CustomPainter {
-  _DitherPainter(this.density);
-  final double density;
-
-  // 4×4 Bayer thresholds.
-  static const _bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = AppColors.ultra);
-    const cell = 1.0; // One logical pixel per dither dot.
-    final white = Paint()..color = AppColors.foam;
-    final rows = (size.height / cell).ceil(),
-        columns = (size.width / cell).ceil();
-    for (var y = 0; y < rows; y++) {
-      for (var x = 0; x < columns; x++) {
-        // Slow waves along the strip, brighter toward its top edge.
-        final wave = 0.5 + 0.5 * _sin(x / 9) * _sin(x / 31 + y * 0.7);
-        final value = density * (0.4 + 1.2 * wave) * (1.2 - y / rows * 0.5);
-        if (value > (_bayer[(y % 4) * 4 + x % 4] + 0.5) / 16) {
-          canvas.drawRect(Rect.fromLTWH(x * cell, y * cell, cell, cell), white);
-        }
-      }
-    }
-  }
-
-  static double _sin(double v) {
-    // Cheap, smooth periodic function; exact sine is not needed here.
-    final t = (v / 6.283185307) % 1.0;
-    final u = t < 0.5 ? t * 4 - 1 : 3 - t * 4;
-    return u * (2 - u.abs());
-  }
-
-  @override
-  bool shouldRepaint(_DitherPainter old) => old.density != density;
-}
-
 /// A square slider thumb, matching the theme's square corners.
 class SquareSliderThumb extends SliderComponentShape {
   const SquareSliderThumb({this.size = 12});

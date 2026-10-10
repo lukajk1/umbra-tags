@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -2612,15 +2613,22 @@ class _GalleryPageState extends State<GalleryPage>
       menus,
       // Empty space either side of the search moves the window, like a
       // native title bar; double-click maximizes.
-      const Expanded(child: _TitleDragArea()),
-      Flexible(
-        flex: 4,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          child: _searchBox(),
+      // The middle takes all free space, so the right-hand group always ends
+      // at the window edge; the search sits centred within it.
+      Expanded(
+        child: LayoutBuilder(
+          builder: (context, box) => Row(
+            children: [
+              const Expanded(child: _TitleDragArea()),
+              SizedBox(
+                width: math.min(460, math.max(0, box.maxWidth - 48)),
+                child: _searchBox(),
+              ),
+              const Expanded(child: _TitleDragArea()),
+            ],
+          ),
         ),
       ),
-      const Expanded(child: _TitleDragArea()),
       SegmentedButton<LayoutMode>(
         style: const ButtonStyle(
           visualDensity: VisualDensity(horizontal: -2, vertical: -2),
@@ -2831,10 +2839,6 @@ class _GalleryPageState extends State<GalleryPage>
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 48,
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(4),
-          child: RepaintBoundary(child: DitherStrip()),
-        ),
         title: _topBar(
           MenuBar(
             style: const MenuStyle(
