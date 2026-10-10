@@ -134,6 +134,44 @@ class EmbeddingRepository {
             )
             .map((r) => Map<String, Object?>.from(r))
             .toList();
+      case 'searchVector':
+        // Text-to-image search: every indexed image ranked by cosine
+        // similarity to a query vector. Returns ids and scores only.
+        final raw = (args['vector'] as List)
+            .map((v) => (v as num).toDouble())
+            .toList();
+        if (raw.isEmpty || raw.length > 16384 || raw.any((v) => !v.isFinite)) {
+          throw StateError('Invalid query vector.');
+        }
+        final norm = math.sqrt(raw.fold<double>(0, (s, v) => s + v * v));
+        if (norm <= 0) throw StateError('Empty query vector.');
+        final query = [for (final v in raw) v / norm];
+        final limit = (args['limit'] as int?) ?? 100;
+        final scored = <(String, double)>[];
+        final statement = db.prepare(
+          '''SELECT a.id,e.vector FROM assets a JOIN embeddings e ON e.asset_id=a.id
+          WHERE e.model_key=? AND e.analyzed_sha256=a.sha256 AND e.dimension=?
+          AND e.vector IS NOT NULL AND a.archived=0 AND a.missing=0''',
+        );
+        try {
+          final cursor = statement.selectCursor([key, query.length]);
+          while (cursor.moveNext()) {
+            final row = cursor.current;
+            final vector = ByteData.sublistView(row['vector'] as Uint8List);
+            var score = 0.0;
+            for (var i = 0; i < query.length; i++) {
+              score += query[i] * vector.getFloat32(i * 4, Endian.little);
+            }
+            scored.add((row['id'] as String, score.clamp(-1.0, 1.0)));
+          }
+        } finally {
+          statement.close();
+        }
+        scored.sort((a, b) => b.$2.compareTo(a.$2));
+        return [
+          for (final (id, score) in scored.take(limit))
+            <String, Object?>{'id': id, 'score': score},
+        ];
       case 'search':
         final source = db.select(
           '''SELECT e.vector,e.dimension FROM embeddings e

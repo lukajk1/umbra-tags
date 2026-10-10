@@ -204,6 +204,14 @@ class _GalleryPageState extends State<GalleryPage>
   final Map<String, GlobalKey> _tileKeys = {};
   final Map<String, Future<String?>> _thumbnails = {};
 
+  /// Natural-language search: the query, its embedding, and each result's
+  /// similarity. While set, the gallery lists the closest images, best first.
+  String? _textQuery;
+  TextQueryVector? _queryVector;
+  Map<String, double> _searchScores = {};
+  final _searchField = TextEditingController();
+  static const _textSearchLimit = 100;
+
   /// Sidebar tags whose children are hidden; kept across sessions.
   final Set<String> _collapsedTags = {};
   bool _busy = false;
@@ -414,6 +422,85 @@ class _GalleryPageState extends State<GalleryPage>
   }
 
   SimilarityController? _similarity;
+
+  /// Shows the images closest to a description, e.g. "blue city at night".
+  /// The text encoder maps the query into the same space as the indexed
+  /// image vectors, so the closest vectors are the best matches.
+  void _searchByText(String text) => _run(() async {
+    final query = text.trim();
+    final similarity = _similarity;
+    if (_library == null) return;
+    if (query.isEmpty) {
+      _endTextSearch();
+      await _reload();
+      return;
+    }
+    if (similarity == null) {
+      throw LibraryException('Similarity search is not running.');
+    }
+    await similarity.start();
+    if (similarity.error != null) {
+      throw LibraryException(
+        'The similarity index needs attention: ${similarity.error}',
+      );
+    }
+    setState(() => _status = 'Searching for “$query”…');
+    final vector = await _suggestionBackend.embedText(query);
+    if (vector.embeddingKey == null ||
+        vector.embeddingKey != similarity.model?.key) {
+      throw LibraryException(
+        'The bundled text and image models do not match, so text search is unavailable.',
+      );
+    }
+    _textQuery = query;
+    _queryVector = vector;
+    _selectedPaths.clear();
+    await _reload();
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+  });
+
+  void _endTextSearch() {
+    _textQuery = null;
+    _queryVector = null;
+    _searchScores = {};
+    _searchField.clear();
+  }
+
+  Future<List<LibraryAsset>> _textSearchResults() async {
+    final library = _library!;
+    final query = _queryVector!;
+    final ranked =
+        (await library.similarity({
+                  'op': 'searchVector',
+                  'key': query.embeddingKey,
+                  'vector': query.vector,
+                  'limit': _textSearchLimit,
+                })
+                as List)
+            .cast<Map>();
+    // Reference-tag images stay hidden, as in All images.
+    final visible = {
+      for (final asset in await library.assets(excludeHidden: true))
+        asset.id: asset,
+    };
+    _searchScores = {
+      for (final row in ranked) row['id'] as String: row['score'] as double,
+    };
+    return [
+      for (final row in ranked) ?visible[row['id']],
+    ].where((asset) => !_hiddenIds.contains(asset.id)).toList();
+  }
+
+  String _textSearchStatus(int count) {
+    final similarity = _similarity;
+    final best = _searchScores.values.fold<double?>(
+      null,
+      (best, score) => best == null || score > best ? score : best,
+    );
+    return 'Closest $count to “$_textQuery”'
+        '${best == null ? '' : ' · best match ${best.toStringAsFixed(3)}'}'
+        '${similarity != null && similarity.ready < similarity.total ? ' · ${similarity.ready} of ${similarity.total} images indexed so far' : ''}';
+  }
 
   Future<void> _stopSimilarity() async {
     final controller = _similarity;
@@ -1001,14 +1088,19 @@ class _GalleryPageState extends State<GalleryPage>
     if (_tagFilter != null && !tags.any((tag) => tag.id == _tagFilter)) {
       _tagFilter = null;
     }
-    final assets = (await _library!.assets(
-      archived: _showArchived,
-      untagged: _untagged,
-      tagId: _tagFilter,
-      excludeHidden: !_showArchived && !_untagged,
-      starredOnly: _starredOnly,
-    )).where((asset) => !_hiddenIds.contains(asset.id)).toList();
-    _applyOrder(assets);
+    final List<LibraryAsset> assets;
+    if (_queryVector != null) {
+      assets = await _textSearchResults();
+    } else {
+      assets = (await _library!.assets(
+        archived: _showArchived,
+        untagged: _untagged,
+        tagId: _tagFilter,
+        excludeHidden: !_showArchived && !_untagged,
+        starredOnly: _starredOnly,
+      )).where((asset) => !_hiddenIds.contains(asset.id)).toList();
+      _applyOrder(assets);
+    }
     if (!mounted) return;
     setState(() {
       _assets = assets;
@@ -1030,9 +1122,10 @@ class _GalleryPageState extends State<GalleryPage>
         _tileKeys.putIfAbsent(path, () => GlobalKey());
       }
       _selectedPaths.removeWhere((path) => !_assetsByPath.containsKey(path));
-      _status =
-          '${assets.length} images${_showArchived ? ' archived' : ''}'
-          '${assets.any((a) => a.missing) ? ' · ${assets.where((a) => a.missing).length} missing' : ''}';
+      _status = _textQuery != null
+          ? _textSearchStatus(assets.length)
+          : '${assets.length} images${_showArchived ? ' archived' : ''}'
+                '${assets.any((a) => a.missing) ? ' · ${assets.where((a) => a.missing).length} missing' : ''}';
     });
   }
 
@@ -1436,6 +1529,7 @@ class _GalleryPageState extends State<GalleryPage>
   }
 
   void _setFilter(LibraryView view, [String? tag]) => _run(() async {
+    _endTextSearch();
     _rememberScrollPosition();
     _showArchived = view == LibraryView.archived;
     _untagged = view == LibraryView.untagged;
@@ -2194,6 +2288,7 @@ class _GalleryPageState extends State<GalleryPage>
 
   @override
   void dispose() {
+    _searchField.dispose();
     _rememberScrollPosition();
     _resizeTimer?.cancel();
     _sessionTimer?.cancel();
@@ -2433,6 +2528,34 @@ class _GalleryPageState extends State<GalleryPage>
         ),
         titleSpacing: 0,
         actions: [
+          SizedBox(
+            width: 300,
+            child: TextField(
+              key: const ValueKey('text-search'),
+              controller: _searchField,
+              enabled: _library != null,
+              onSubmitted: _searchByText,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: 'Describe an image… e.g. green statue',
+                prefixIcon: const Icon(Icons.search, size: 18),
+                suffixIcon: _textQuery == null
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: _busy
+                            ? null
+                            : () => _run(() async {
+                                _endTextSearch();
+                                await _reload();
+                              }),
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
           SegmentedButton<LayoutMode>(
             segments: const [
               ButtonSegment(

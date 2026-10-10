@@ -80,7 +80,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('New library'));
     await _until(tester, () => find.text('Create').evaluate().isNotEmpty);
-    await tester.enterText(find.byType(TextField), 'Stars');
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(TextField),
+      ),
+      'Stars',
+    );
     await tester.tap(find.text('Create'));
     await _until(
       tester,

@@ -86,7 +86,13 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('New library'));
       await _until(tester, () => find.text('Create').evaluate().isNotEmpty);
-      await tester.enterText(find.byType(TextField), 'Deletions');
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+        'Deletions',
+      );
       await tester.tap(find.text('Create'));
       await _until(
         tester,
