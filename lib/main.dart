@@ -103,6 +103,14 @@ class GalleryApp extends StatelessWidget {
           surface: AppColors.darker,
         ),
         scaffoldBackgroundColor: AppColors.lighter,
+        // The serif face everywhere: menus, dialogs, fields and tooltips all
+        // draw from these text themes.
+        textTheme: ThemeData.dark().textTheme.apply(
+          fontFamily: 'LibreBaskerville',
+        ),
+        primaryTextTheme: ThemeData.dark().primaryTextTheme.apply(
+          fontFamily: 'LibreBaskerville',
+        ),
         // Match the side panels; Material 3 otherwise tints the bar with the
         // accent colour.
         appBarTheme: const AppBarTheme(
