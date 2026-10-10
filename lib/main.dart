@@ -1826,6 +1826,7 @@ class _GalleryPageState extends State<GalleryPage>
       barrierDismissible: false,
       builder: (_) => TagMatchDialog(
         tagName: tag.name,
+        imagePath: (a) => library.absolutePath(a.relativePath),
         assets: assets,
         classifierLabels: labels,
         classifierError: classifierError,
