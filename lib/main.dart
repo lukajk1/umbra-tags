@@ -39,6 +39,7 @@ void main() async {
   await windowManager.setTitle('Umbra Tags');
   await windowManager.setMinimumSize(const Size(1024, 600));
   await windowManager.setPreventClose(true);
+  await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
   runApp(const GalleryApp(startReceiver: true));
 }
 
@@ -837,6 +838,12 @@ class _GalleryPageState extends State<GalleryPage>
     });
     _scrollController.addListener(_rememberScrollPosition);
     HardwareKeyboard.instance.addHandler(_focusSearchOnCtrlK);
+    windowManager.isMaximized().then(
+      (value) {
+        if (mounted) setState(() => _maximized = value);
+      },
+      onError: (_) {}, // No window plugin in tests.
+    );
     _restoreSession();
   }
 
@@ -2093,6 +2100,14 @@ class _GalleryPageState extends State<GalleryPage>
     }
   });
 
+  bool _maximized = false;
+
+  @override
+  void onWindowMaximize() => setState(() => _maximized = true);
+
+  @override
+  void onWindowUnmaximize() => setState(() => _maximized = false);
+
   @override
   void onWindowClose() async {
     if (_closingWindow) return;
@@ -2348,17 +2363,17 @@ class _GalleryPageState extends State<GalleryPage>
   Widget _topBar(Widget menus) => Row(
     children: [
       menus,
-      Expanded(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
-              child: _searchBox(),
-            ),
-          ),
+      // Empty space either side of the search moves the window, like a
+      // native title bar; double-click maximizes.
+      const Expanded(child: _TitleDragArea()),
+      Flexible(
+        flex: 4,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: _searchBox(),
         ),
       ),
+      const Expanded(child: _TitleDragArea()),
       SegmentedButton<LayoutMode>(
         style: const ButtonStyle(
           visualDensity: VisualDensity(horizontal: -2, vertical: -2),
@@ -2439,6 +2454,27 @@ class _GalleryPageState extends State<GalleryPage>
           label: const Text('Import'),
         ),
       const SizedBox(width: 12),
+      for (final button in [
+        WindowCaptionButton.minimize(
+          brightness: Brightness.dark,
+          onPressed: () => windowManager.minimize(),
+        ),
+        _maximized
+            ? WindowCaptionButton.unmaximize(
+                brightness: Brightness.dark,
+                onPressed: () => windowManager.unmaximize(),
+              )
+            : WindowCaptionButton.maximize(
+                brightness: Brightness.dark,
+                onPressed: () => windowManager.maximize(),
+              ),
+        // Goes through onWindowClose, so minimize-to-tray still applies.
+        WindowCaptionButton.close(
+          brightness: Brightness.dark,
+          onPressed: () => windowManager.close(),
+        ),
+      ])
+        SizedBox(height: 48, child: button), // The bar's toolbarHeight.
     ],
   );
 
@@ -2527,6 +2563,7 @@ class _GalleryPageState extends State<GalleryPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 48,
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(4),
           child: RepaintBoundary(child: DitherStrip()),
@@ -3523,6 +3560,16 @@ class GalleryTile extends StatelessWidget {
       );
     }
   }
+}
+
+/// Title-bar space that drags the window and maximizes on double-click.
+class _TitleDragArea extends StatelessWidget {
+  const _TitleDragArea();
+
+  @override
+  Widget build(BuildContext context) =>
+      // The app bar gives its title an unbounded height; match toolbarHeight.
+      const DragToMoveArea(child: SizedBox(height: 48));
 }
 
 /// A keyboard shortcut hint, drawn like a key cap.
