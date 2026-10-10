@@ -36,6 +36,7 @@ class LibraryAsset {
             ).toLocal()
           : null,
       contentHash = row['sha256'] as String,
+      byteSize = row['byte_size'] as int? ?? 0,
       missing = row['missing'] == 1,
       archived = row['archived'] == 1,
       starred = row['starred'] == 1,
@@ -45,6 +46,9 @@ class LibraryAsset {
 
   final String id, relativePath, originalFilename, contentHash;
   final int width, height;
+
+  /// Size of the library's copy in bytes; 0 when unknown.
+  final int byteSize;
   final DateTime? importedAt;
   final bool missing, archived, starred;
   final List<String> tagIds;
@@ -227,6 +231,25 @@ class LibraryStore {
   Future<void> deleteAssets(List<String> ids) async {
     await _call('delete', ids);
   }
+
+  /// Replaces the library's copy of [assetId] with a resized version at
+  /// exactly [width]×[height] (the caller keeps the aspect ratio). The
+  /// previous file goes to the library trash (see [trashFiles]) so the caller
+  /// can send it to the Recycle Bin. Returns the updated asset.
+  ///
+  /// The format is kept (JPEG, PNG, GIF with all animation frames, BMP,
+  /// WebP), so the relative path normally stays the same; EXIF orientation is
+  /// baked into the pixels. Tags, star and archive state are untouched.
+  Future<LibraryAsset> resizeAsset(
+    String assetId, {
+    required int width,
+    required int height,
+  }) async => LibraryAsset.fromMap(
+    Map<String, Object?>.from(
+      await _call('resize', {'id': assetId, 'width': width, 'height': height})
+          as Map,
+    ),
+  );
 
   /// Absolute paths of media files waiting in the library's trash folder.
   Future<List<String>> trashFiles() async =>
@@ -627,6 +650,13 @@ class _LibraryEngine {
       case 'delete':
         _deleteAssets((args as List).cast<String>());
         return null;
+      case 'resize':
+        final values = args as Map;
+        return _resize(
+          values['id'] as String,
+          values['width'] as int,
+          values['height'] as int,
+        );
       case 'trashFiles':
         return _trashFiles();
       case 'purgeTrash':
@@ -966,6 +996,327 @@ class _LibraryEngine {
     journal.deleteSync();
   }
 
+  static final _assetIdPattern = RegExp(r'^[0-9a-f-]{36}$');
+  static final _hashPattern = RegExp(r'^[0-9a-f]{64}$');
+
+  /// Downscales an asset's media file in place, keeping its format. Follows
+  /// the import journal pattern: the new bytes and a flushed journal are
+  /// written to `staging/` before any library file changes, so
+  /// [_finishResize] can complete or roll back the operation after a crash.
+  Map<String, Object?> _resize(String assetId, int width, int height) {
+    if (width < 1 || height < 1 || width > 16384 || height > 16384) {
+      throw LibraryException('Width and height must be 1–16384 pixels.');
+    }
+    if (!_assetIdPattern.hasMatch(assetId)) {
+      throw LibraryException('This image is no longer in the library.');
+    }
+    final journal = File(path('staging/resize-$assetId.json'));
+    final part = File(path('staging/resize-$assetId.part'));
+    // An earlier attempt that failed midway is completed first.
+    if (journal.existsSync()) _finishResize(journal);
+    final rows = db.select('SELECT * FROM assets WHERE id = ?', [assetId]);
+    if (rows.isEmpty) {
+      throw LibraryException('This image is no longer in the library.');
+    }
+    final row = Map<String, Object?>.from(rows.single);
+    final oldRelative = row['relative_path'] as String;
+    final oldHash = row['sha256'] as String;
+    final source = File(path(oldRelative));
+    if (!source.existsSync()) {
+      throw LibraryException(
+        'The image file is missing, so it cannot be resized.',
+      );
+    }
+    if (width >= (row['width'] as int) || height >= (row['height'] as int)) {
+      throw LibraryException('Choose a size smaller than the original.');
+    }
+    final bytes = source.readAsBytesSync();
+    if (sha256.convert(bytes).toString() != oldHash) {
+      throw LibraryException(
+        'The image file was changed outside the library. Nothing was resized.',
+      );
+    }
+    final decoder = img.findDecoderForData(bytes);
+    final info = decoder?.startDecode(bytes);
+    if (decoder == null || info == null) {
+      throw LibraryException('Could not decode this image.');
+    }
+    if (info.width * info.height * info.numFrames > 80000000) {
+      throw LibraryException(
+        'Image exceeds the 80 megapixel decoded limit (including animation frames).',
+      );
+    }
+    var ext = img.findFormatForData(bytes).name;
+    // Keep lossless WebP lossless; lossy and animated WebP are re-encoded lossy.
+    var webpLossless = false;
+    if (ext == 'webp') {
+      final webp = img.WebPDecoder().startDecode(bytes);
+      webpLossless =
+          webp is img.WebPInfo && webp.format == img.WebPFormat.lossless;
+    }
+    // Decodes every frame of an animated GIF/WebP/PNG; copyResize resizes
+    // each frame and keeps frame durations and the loop count.
+    final decoded = decoder.decode(bytes);
+    if (decoded == null) throw LibraryException('Could not decode this image.');
+    var image = img.bakeOrientation(decoded);
+    // Palette images can only be resized with nearest-neighbour sampling.
+    if (image.hasPalette) {
+      image = image.convert(
+        format: img.Format.uint8,
+        numChannels: image.numChannels,
+      );
+    }
+    if (width >= image.width || height >= image.height) {
+      throw LibraryException('Choose a size smaller than the original.');
+    }
+    final resized = img.copyResize(
+      image,
+      width: width,
+      height: height,
+      interpolation: img.Interpolation.average,
+    );
+    final Uint8List encoded;
+    switch (ext) {
+      case 'jpg':
+        encoded = img.encodeJpg(resized, quality: 92);
+      case 'png':
+        encoded = img.encodePng(resized);
+      case 'gif':
+        encoded = img.encodeGif(resized);
+      case 'bmp':
+        encoded = img.encodeBmp(resized);
+      case 'webp':
+        encoded = webpLossless
+            ? img.encodeWebP(resized)
+            : img.encodeWebP(resized, lossless: false, quality: 90);
+      default:
+        ext = 'png';
+        encoded = img.encodePng(resized);
+    }
+    final newHash = sha256.convert(encoded).toString();
+    if (db.select('SELECT id FROM assets WHERE sha256 = ? AND id != ?', [
+      newHash,
+      assetId,
+    ]).isNotEmpty) {
+      throw LibraryException(
+        'The resized image would be identical to another image in the library. Nothing was changed.',
+      );
+    }
+    final newRelative = 'media/${assetId.substring(0, 2)}/$assetId.$ext';
+    // Never overwrite an earlier trashed file that has not been collected yet.
+    var trash = _trashPathFor(row);
+    final stem = p.basenameWithoutExtension(trash);
+    final suffix = p.extension(trash);
+    for (var n = 2; File(trash).existsSync(); n++) {
+      trash = p.join(p.dirname(trash), '$stem ($n)$suffix');
+    }
+    final record = <String, Object?>{
+      'operation': 'resize',
+      'id': assetId,
+      'old_relative_path': oldRelative,
+      'old_sha256': oldHash,
+      'relative_path': newRelative,
+      'sha256': newHash,
+      'width': resized.width,
+      'height': resized.height,
+      'byte_size': encoded.length,
+      'media_type': 'image/${ext == 'jpg' ? 'jpeg' : ext}',
+      'original_filename': row['original_filename'],
+      'trash_path': p.split(p.relative(trash, from: root)).join('/'),
+    };
+    try {
+      part.writeAsBytesSync(encoded, flush: true);
+      final temp = File('${journal.path}.tmp');
+      temp.writeAsStringSync(jsonEncode(record), flush: true);
+      temp.renameSync(journal.path);
+    } catch (_) {
+      if (!journal.existsSync() && part.existsSync()) part.deleteSync();
+      rethrow;
+    }
+    try {
+      _finishResize(journal);
+    } catch (_) {
+      // Nothing in the library moved yet (e.g. the original is locked by
+      // another app): discard the attempt instead of leaving it pending.
+      if (journal.existsSync() &&
+          _hashOf(source) == oldHash &&
+          (newRelative == oldRelative ||
+              !File(path(newRelative)).existsSync())) {
+        if (part.existsSync()) part.deleteSync();
+        journal.deleteSync();
+      }
+      rethrow;
+    }
+    return _assetWithTags(assetId);
+  }
+
+  /// Completes a resize journal, or rolls it back when the new bytes never
+  /// fully arrived. Safe to run repeatedly at any point of a crash.
+  void _finishResize(File journal) {
+    final data = jsonDecode(journal.readAsStringSync());
+    if (data is! Map ||
+        data['operation'] != 'resize' ||
+        data['id'] is! String ||
+        !_assetIdPattern.hasMatch(data['id'] as String) ||
+        p.basename(journal.path) != 'resize-${data['id']}.json' ||
+        !_isMediaPath(data['id'] as String, data['old_relative_path']) ||
+        !_isMediaPath(data['id'] as String, data['relative_path']) ||
+        data['old_sha256'] is! String ||
+        !_hashPattern.hasMatch(data['old_sha256'] as String) ||
+        data['sha256'] is! String ||
+        !_hashPattern.hasMatch(data['sha256'] as String) ||
+        data['width'] is! int ||
+        (data['width'] as int) < 1 ||
+        data['height'] is! int ||
+        (data['height'] as int) < 1 ||
+        data['byte_size'] is! int ||
+        (data['byte_size'] as int) < 0 ||
+        data['media_type'] is! String ||
+        data['trash_path'] is! String ||
+        !(data['trash_path'] as String).startsWith(
+          'staging/trash/${data['id']}/',
+        )) {
+      throw LibraryException('Invalid resize journal. Files were preserved.');
+    }
+    final id = data['id'] as String;
+    final oldRelative = data['old_relative_path'] as String;
+    final newRelative = data['relative_path'] as String;
+    final oldHash = data['old_sha256'] as String;
+    final newHash = data['sha256'] as String;
+    final part = File(path('staging/resize-$id.part'));
+    final oldFile = File(path(oldRelative));
+    final newFile = File(path(newRelative));
+    final trashed = File(path(data['trash_path'] as String));
+    void cleanUp() {
+      if (part.existsSync()) part.deleteSync();
+      journal.deleteSync();
+    }
+
+    final rows = db.select(
+      'SELECT relative_path, sha256 FROM assets WHERE id = ?',
+      [id],
+    );
+    if (rows.isEmpty) {
+      // The image was deleted afterwards; its media went with it.
+      cleanUp();
+      return;
+    }
+    final current = rows.single;
+    if (current['sha256'] == newHash &&
+        current['relative_path'] == newRelative) {
+      _deleteCacheFile('cache/thumbnails/$id-$oldHash-v2.jpg');
+      cleanUp();
+      return;
+    }
+    if (current['sha256'] != oldHash ||
+        current['relative_path'] != oldRelative) {
+      throw LibraryException(
+        'Resize journal conflicts with the library. Files were preserved.',
+      );
+    }
+    final partReady = _hashOf(part) == newHash;
+    final placed = !partReady && _hashOf(newFile) == newHash;
+    final clash = db.select(
+      'SELECT id FROM assets WHERE sha256 = ? AND id != ?',
+      [newHash, id],
+    ).isNotEmpty;
+    if ((!partReady && !placed) || clash) {
+      // Roll back: keep the original, restoring it from the trash if needed.
+      if (_hashOf(oldFile) != oldHash && _hashOf(trashed) == oldHash) {
+        oldFile.parent.createSync(recursive: true);
+        // Same path as the new copy, which is discarded.
+        if (oldFile.existsSync()) _retryLocked(oldFile.deleteSync);
+        _retryLocked(() => trashed.renameSync(oldFile.path));
+      }
+      if (newRelative != oldRelative && newFile.existsSync()) {
+        _retryLocked(newFile.deleteSync);
+      }
+      cleanUp();
+      return;
+    }
+    if (_hashOf(oldFile) == oldHash) {
+      trashed.parent.createSync(recursive: true);
+      _retryLocked(() => oldFile.renameSync(trashed.path));
+    }
+    if (partReady) {
+      newFile.parent.createSync(recursive: true);
+      _retryLocked(() => part.renameSync(newFile.path));
+    }
+    db.execute('BEGIN IMMEDIATE');
+    try {
+      db.execute(
+        '''UPDATE assets SET relative_path = ?, media_type = ?, width = ?,
+           height = ?, byte_size = ?, sha256 = ?, missing = 0 WHERE id = ?''',
+        [
+          newRelative,
+          data['media_type'],
+          data['width'],
+          data['height'],
+          data['byte_size'],
+          newHash,
+          id,
+        ],
+      );
+      db.execute('COMMIT');
+    } catch (_) {
+      db.execute('ROLLBACK');
+      rethrow;
+    }
+    _deleteCacheFile('cache/thumbnails/$id-$oldHash-v2.jpg');
+    cleanUp();
+  }
+
+  bool _isMediaPath(String id, Object? relative) {
+    if (relative is! String) return false;
+    final extension = p.extension(relative);
+    return extension.length > 1 &&
+        LibraryStore.supportedExtensions.contains(extension.substring(1)) &&
+        relative == 'media/${id.substring(0, 2)}/$id$extension';
+  }
+
+  String? _hashOf(File file) => file.existsSync()
+      ? sha256.convert(file.readAsBytesSync()).toString()
+      : null;
+
+  /// Best effort: a stale cache file is harmless.
+  void _deleteCacheFile(String relative) {
+    try {
+      final file = File(path(relative));
+      if (file.existsSync()) file.deleteSync();
+    } on FileSystemException {
+      // Left for a later cleanup.
+    }
+  }
+
+  /// Retries Windows sharing violations (error 32): native image codecs
+  /// release file mappings asynchronously. Runs in the storage isolate.
+  void _retryLocked(void Function() action) {
+    for (var attempt = 0; ; attempt++) {
+      try {
+        action();
+        return;
+      } on FileSystemException catch (error) {
+        if (!Platform.isWindows ||
+            error.osError?.errorCode != 32 ||
+            attempt >= 9) {
+          rethrow;
+        }
+        sleep(const Duration(milliseconds: 50));
+      }
+    }
+  }
+
+  Map<String, Object?> _assetWithTags(String assetId) => {
+    ...db.select('SELECT * FROM assets WHERE id = ?', [assetId]).single,
+    'tag_ids': [
+      for (final row in db.select(
+        'SELECT tag_id FROM asset_tags WHERE asset_id = ?',
+        [assetId],
+      ))
+        row['tag_id'] as String,
+    ],
+  };
+
   /// `staging/trash/<id>/<original filename>`, made safe for Windows.
   String _trashPathFor(Map row) {
     final id = row['id'] as String;
@@ -1000,12 +1351,17 @@ class _LibraryEngine {
 
   void _recover() {
     final deletions = <File>[];
+    final resizes = <File>[];
     for (final entry in Directory(
       path('staging'),
     ).listSync(followLinks: false)) {
       if (entry is! File || !entry.path.endsWith('.json')) continue;
       if (p.basename(entry.path).startsWith('delete-')) {
         deletions.add(entry);
+        continue;
+      }
+      if (p.basename(entry.path).startsWith('resize-')) {
+        resizes.add(entry);
         continue;
       }
       final record = Map<String, Object?>.from(
@@ -1056,6 +1412,10 @@ class _LibraryEngine {
     }
     for (final journal in deletions) {
       _finishDelete(journal);
+    }
+    // After deletions: a resize of an image deleted later only needs cleanup.
+    for (final journal in resizes) {
+      _finishResize(journal);
     }
     db.execute(
       "UPDATE jobs SET status = 'interrupted', updated_at = ? WHERE status = 'running'",

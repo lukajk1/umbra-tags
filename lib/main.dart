@@ -30,6 +30,7 @@ import 'widgets/gallery_drop_target.dart';
 import 'widgets/downloads_import_dialog.dart';
 import 'widgets/exact_masonry.dart';
 import 'widgets/view_breadcrumbs.dart';
+import 'widgets/resize_dialog.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1834,6 +1835,119 @@ class _GalleryPageState extends State<GalleryPage>
     await library.trashFiles(); // Clears the emptied folders.
   }
 
+  /// Opens the resize wizard for one image.
+  void _resizeImage(LibraryAsset asset) => _run(() async {
+    final library = _library;
+    if (library == null) return;
+    final thumbnail = await library.thumbnail(asset);
+    if (!mounted) return;
+    final choice = await showDialog<ResizeChoice>(
+      context: context,
+      builder: (context) =>
+          ResizeDialog(asset: asset, thumbnailPath: thumbnail),
+    );
+    if (choice?.action != ResizeAction.resize || !mounted) return;
+    await _applyResize(library, asset, choice!.width!, choice.height!);
+    await _reload();
+    if (mounted) {
+      setState(
+        () => _status =
+            'Resized ${asset.originalFilename} to ${choice.width} × ${choice.height}',
+      );
+    }
+  });
+
+  /// Walks through every image above a size threshold, largest first, opening
+  /// the resize wizard for each so it can be resized or skipped.
+  void _resizeLargeImages() => _run(() async {
+    final library = _library;
+    if (library == null) return;
+    final all = await library.assets();
+    if (!mounted) return;
+    final threshold = await showDialog<LargeImageThreshold>(
+      context: context,
+      builder: (context) => LargeImagesDialog(assets: all),
+    );
+    if (threshold == null) return;
+    int weight(LibraryAsset a) =>
+        threshold.measure == LargeImageMeasure.fileSize
+        ? a.byteSize
+        : a.width * a.height;
+    final queue = all.where(threshold.matches).toList()
+      ..sort((a, b) => weight(b).compareTo(weight(a)));
+    var resized = 0, skipped = 0;
+    final failures = <String>[];
+    try {
+      for (var i = 0; i < queue.length; i++) {
+        final asset = queue[i];
+        final thumbnail = await library.thumbnail(asset);
+        if (!mounted || _closingWindow) break;
+        final choice = await showDialog<ResizeChoice>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => ResizeDialog(
+            asset: asset,
+            thumbnailPath: thumbnail,
+            position: i + 1,
+            total: queue.length,
+            suggestedLongEdge: threshold.suggestedLongEdge,
+          ),
+        );
+        if (choice == null || choice.action == ResizeAction.stop) break;
+        if (choice.action == ResizeAction.skip) {
+          skipped++;
+          continue;
+        }
+        try {
+          await _applyResize(library, asset, choice.width!, choice.height!);
+          resized++;
+        } on LibraryException catch (error) {
+          failures.add('${asset.originalFilename}: $error');
+        }
+      }
+    } finally {
+      _thumbnails.clear();
+      if (mounted && !_closingWindow) await _reload();
+    }
+    if (!mounted) return;
+    setState(
+      () => _status =
+          'Resized $resized, skipped $skipped'
+          '${failures.isEmpty ? '' : ', ${failures.length} failed'}',
+    );
+    if (failures.isNotEmpty) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Some images could not be resized'),
+          content: SelectableText(failures.join('\n')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  });
+
+  /// Replaces the library copy of [asset] with a [width]×[height] version and
+  /// sends the previous file to the Recycle Bin.
+  Future<void> _applyResize(
+    LibraryStore library,
+    LibraryAsset asset,
+    int width,
+    int height,
+  ) async {
+    // Windows keeps file mappings until decoded images are released.
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+    await library.resizeAsset(asset.id, width: width, height: height);
+    _thumbnails.remove(library.absolutePath(asset.relativePath));
+    await _emptyLibraryTrash(library);
+  }
+
   void _openPreviewExternally() {
     if (_selectedPaths.isNotEmpty) _openImageExternally(_selectedPaths.first);
   }
@@ -2227,6 +2341,12 @@ class _GalleryPageState extends State<GalleryPage>
                   child: const Text('ML classify'),
                 ),
                 MenuItemButton(
+                  onPressed: _busy || _library == null
+                      ? null
+                      : _resizeLargeImages,
+                  child: const Text('Resize large images…'),
+                ),
+                MenuItemButton(
                   onPressed: _busy || _warmingModels || !_sessionRestored
                       ? null
                       : _configureOptions,
@@ -2616,6 +2736,9 @@ class _GalleryPageState extends State<GalleryPage>
                                     onSimilar: _busy
                                         ? null
                                         : () => _findSimilar(_assets[index]),
+                                    onResize: _busy || _showArchived
+                                        ? null
+                                        : () => _resizeImage(_assets[index]),
                                     onTagDropped: _busy
                                         ? null
                                         : (tag) => _applyDroppedTag(
@@ -2689,6 +2812,9 @@ class _GalleryPageState extends State<GalleryPage>
                                     onSimilar: _busy
                                         ? null
                                         : () => _findSimilar(_assets[index]),
+                                    onResize: _busy || _showArchived
+                                        ? null
+                                        : () => _resizeImage(_assets[index]),
                                     onTagDropped: _busy
                                         ? null
                                         : (tag) => _applyDroppedTag(
@@ -2969,6 +3095,7 @@ class GalleryTile extends StatelessWidget {
     this.onRefine,
     this.canRefine,
     this.onSimilar,
+    this.onResize,
     this.onTagDropped,
     this.tagDropCount = 1,
     this.starred = false,
@@ -2993,7 +3120,8 @@ class GalleryTile extends StatelessWidget {
       onDelete,
       onRefine,
       onClassify,
-      onSimilar;
+      onSimilar,
+      onResize;
 
   /// Assigns a tag dragged from the sidebar; [tagDropCount] images receive it.
   final ValueChanged<LibraryTag>? onTagDropped;
@@ -3144,6 +3272,11 @@ class GalleryTile extends StatelessWidget {
           enabled: onSimilar != null,
           child: const Text('Find similar'),
         ),
+        PopupMenuItem(
+          value: 'resize',
+          enabled: onResize != null,
+          child: const _MenuLabel(Icons.photo_size_select_large, 'Resize…'),
+        ),
         if (onRefine != null && (canRefine?.call() ?? false))
           const PopupMenuItem(value: 'refine', child: Text('AI refine tags…')),
         PopupMenuItem(
@@ -3176,6 +3309,7 @@ class GalleryTile extends StatelessWidget {
     if (choice == 'refine' && context.mounted) onRefine?.call();
     if (choice == 'classify' && context.mounted) onClassify?.call();
     if (choice == 'similar' && context.mounted) onSimilar?.call();
+    if (choice == 'resize' && context.mounted) onResize?.call();
     if (choice == 'info' && context.mounted) {
       await showDialog<void>(
         context: context,
