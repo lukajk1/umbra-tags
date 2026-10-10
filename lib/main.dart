@@ -3319,9 +3319,6 @@ class _GalleryPageState extends State<GalleryPage>
                                     onDelete: _busy ? null : _deleteSelection,
                                     onRefine: _busy ? null : _refineSelection,
                                     canRefine: _canRefineSelection,
-                                    onClassify: _busy
-                                        ? null
-                                        : _classifySelection,
                                     onAiSort: _busy || _showArchived
                                         ? null
                                         : () => _aiSort(selection: _selection),
@@ -3398,9 +3395,6 @@ class _GalleryPageState extends State<GalleryPage>
                                     onDelete: _busy ? null : _deleteSelection,
                                     onRefine: _busy ? null : _refineSelection,
                                     canRefine: _canRefineSelection,
-                                    onClassify: _busy
-                                        ? null
-                                        : _classifySelection,
                                     onAiSort: _busy || _showArchived
                                         ? null
                                         : () => _aiSort(selection: _selection),
@@ -3712,7 +3706,6 @@ class GalleryTile extends StatelessWidget {
     this.onArchive,
     this.archived = false,
     this.onDelete,
-    this.onClassify,
     this.onAiSort,
     this.onRefine,
     this.canRefine,
@@ -3741,7 +3734,6 @@ class GalleryTile extends StatelessWidget {
       onArchive,
       onDelete,
       onRefine,
-      onClassify,
       onAiSort,
       onSimilar,
       onResize;
@@ -3908,11 +3900,6 @@ class GalleryTile extends StatelessWidget {
           child: const _MenuLabel(Icons.auto_awesome_outlined, 'AI sort…'),
         ),
         PopupMenuItem(
-          value: 'classify',
-          enabled: onClassify != null,
-          child: const Text('ML classify'),
-        ),
-        PopupMenuItem(
           value: 'archive',
           enabled: onArchive != null,
           child: archived
@@ -3935,7 +3922,6 @@ class GalleryTile extends StatelessWidget {
     if (choice == 'archive' && context.mounted) onArchive?.call();
     if (choice == 'delete' && context.mounted) onDelete?.call();
     if (choice == 'refine' && context.mounted) onRefine?.call();
-    if (choice == 'classify' && context.mounted) onClassify?.call();
     if (choice == 'aiSort' && context.mounted) onAiSort?.call();
     if (choice == 'similar' && context.mounted) onSimilar?.call();
     if (choice == 'resize' && context.mounted) onResize?.call();
