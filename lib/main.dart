@@ -166,6 +166,9 @@ class _GalleryPageState extends State<GalleryPage>
   /// similarity. While set, the gallery lists the closest images, best first.
   String? _textQuery;
   TextQueryVector? _queryVector;
+
+  /// While set, the gallery lists the images most similar to this one.
+  LibraryAsset? _similarTo;
   Map<String, double> _searchScores = {};
   final _searchField = TextEditingController();
   final _searchFocus = FocusNode();
@@ -432,6 +435,7 @@ class _GalleryPageState extends State<GalleryPage>
   });
 
   void _endTextSearch() {
+    _similarTo = null;
     _textQuery = null;
     _queryVector = null;
     _searchScores = {};
@@ -553,17 +557,42 @@ class _GalleryPageState extends State<GalleryPage>
     unawaited(controller.start());
   }
 
-  void _findSimilar(LibraryAsset asset) {
+  /// Shows the images closest to [asset] in the gallery, so every image
+  /// action works on the results. Ends like a text search: the search
+  /// field's clear button or any sidebar view.
+  void _findSimilar(LibraryAsset asset) => _run(() async {
     final controller = _similarity;
-    if (_busy || controller == null) return;
-    showDialog<void>(
-      context: context,
-      builder: (_) => SimilarityDialog(
-        controller: controller,
-        source: asset,
-        onOpen: _openAssetExternally,
-      ),
+    if (controller == null) {
+      throw LibraryException('Similarity search is not running.');
+    }
+    setState(
+      () => _status = 'Finding images similar to ${asset.originalFilename}…',
     );
+    await controller.ensure(asset);
+    if (!mounted) return;
+    _endTextSearch();
+    _similarTo = asset;
+    _selectedPaths.clear();
+    await _reload();
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+  });
+
+  Future<List<LibraryAsset>> _similarResults() async {
+    final library = _library!;
+    final controller = _similarity;
+    if (controller == null) return [];
+    final rows = await controller.search(_similarTo!);
+    // Reference-tag images stay hidden, as in All images.
+    final visible = {
+      for (final asset in await library.assets(excludeHidden: true))
+        asset.id: asset,
+    };
+    _searchScores = {
+      for (final row in rows) row['id'] as String: row['score'] as double,
+    };
+    return [
+      for (final row in rows) ?visible[row['id']],
+    ].where((asset) => !_hiddenIds.contains(asset.id)).toList();
   }
 
   bool _classifying = false;
@@ -1123,7 +1152,9 @@ class _GalleryPageState extends State<GalleryPage>
       _tagFilter = null;
     }
     final List<LibraryAsset> assets;
-    if (_queryVector != null) {
+    if (_similarTo != null) {
+      assets = await _similarResults();
+    } else if (_queryVector != null) {
       assets = await _textSearchResults();
     } else {
       assets = (await _library!.assets(
@@ -1156,7 +1187,9 @@ class _GalleryPageState extends State<GalleryPage>
         _tileKeys.putIfAbsent(path, () => GlobalKey());
       }
       _selectedPaths.removeWhere((path) => !_assetsByPath.containsKey(path));
-      _status = _textQuery != null
+      _status = _similarTo != null
+          ? '${assets.length} closest to ${_similarTo!.originalFilename}'
+          : _textQuery != null
           ? _textSearchStatus(assets.length)
           : '${assets.length} images${_showArchived ? ' archived' : ''}'
                 '${assets.any((a) => a.missing) ? ' · ${assets.where((a) => a.missing).length} missing' : ''}';
@@ -1627,10 +1660,8 @@ class _GalleryPageState extends State<GalleryPage>
         onCreateTag: (name, parentId) =>
             _library!.saveTag(name: name, parentId: parentId),
         assets: selected,
-        onSuggest: _suggestTags,
-        thumbnail: (asset) => _library!.thumbnail(asset),
-        onApplyReviewed: (add, remove, accepted) =>
-            _library!.applyReviewedTags(selected, add, remove, accepted),
+        // Tag suggestions (the dialog's Suggestions tab) are switched off.
+        // Pass onSuggest, thumbnail and onApplyReviewed to bring it back.
         onSave: (add, remove) => _library!.editTags(
           selected.map((a) => a.id).toList(),
           add: add,
@@ -1644,7 +1675,12 @@ class _GalleryPageState extends State<GalleryPage>
   /// The breadcrumb strip's AI sort shortcut for the open view: sort
   /// Untagged into top-level tags, or a tag with children into them.
   ViewAction? get _aiSortAction {
-    if (_library == null || _showArchived || _textQuery != null) return null;
+    if (!_aiSortEnabled ||
+        _library == null ||
+        _showArchived ||
+        _textQuery != null) {
+      return null;
+    }
     if (_untagged) {
       return ViewAction(
         'AI sort into tags…',
@@ -2111,6 +2147,10 @@ class _GalleryPageState extends State<GalleryPage>
   /// [parent] (and none of its children) into its children. [chooseMode]
   /// first asks which of the two to run. With [selection], exactly those
   /// images are sorted, whatever tags they already have.
+  /// AI sort is built but hidden: Find matching images covers the same
+  /// need more simply. Set to true to restore every entry point.
+  static const _aiSortEnabled = false;
+
   void _aiSort({
     LibraryTag? parent,
     bool chooseMode = false,
@@ -2952,10 +2992,12 @@ class _GalleryPageState extends State<GalleryPage>
       ),
       hintText: 'Describe an image… e.g. blue city at night',
       prefixIcon: const Icon(Icons.search, size: 18),
-      suffixIcon: _textQuery == null
+      suffixIcon: _textQuery == null && _similarTo == null
           ? const _KeyCap('Ctrl K')
           : IconButton(
-              tooltip: 'Clear search',
+              tooltip: _similarTo != null
+                  ? 'Back to all images'
+                  : 'Clear search',
               icon: const Icon(Icons.close, size: 18),
               onPressed: _busy
                   ? null
@@ -3041,12 +3083,13 @@ class _GalleryPageState extends State<GalleryPage>
                         : _classifySelection,
                     child: const Text('ML classify'),
                   ),
-                  MenuItemButton(
-                    onPressed: _busy || _library == null
-                        ? null
-                        : () => _aiSort(chooseMode: true),
-                    child: const Text('AI sort…'),
-                  ),
+                  if (_aiSortEnabled)
+                    MenuItemButton(
+                      onPressed: _busy || _library == null
+                          ? null
+                          : () => _aiSort(chooseMode: true),
+                      child: const Text('AI sort…'),
+                    ),
                   MenuItemButton(
                     onPressed: _busy || _library == null
                         ? null
@@ -3192,7 +3235,9 @@ class _GalleryPageState extends State<GalleryPage>
                   onEdit: (tag) => _editTag(tag: tag),
                   onDelete: _deleteTag,
                   onFindMatches: _findTagMatches,
-                  onSortChildren: (tag) => _aiSort(parent: tag),
+                  onSortChildren: _aiSortEnabled
+                      ? (tag) => _aiSort(parent: tag)
+                      : null,
                   onToggleExcluded: _toggleTagExcluded,
                   collapsedTags: _collapsedTags,
                   onToggleCollapsed: (id) {
@@ -3319,7 +3364,10 @@ class _GalleryPageState extends State<GalleryPage>
                                     onDelete: _busy ? null : _deleteSelection,
                                     onRefine: _busy ? null : _refineSelection,
                                     canRefine: _canRefineSelection,
-                                    onAiSort: _busy || _showArchived
+                                    onAiSort:
+                                        !_aiSortEnabled ||
+                                            _busy ||
+                                            _showArchived
                                         ? null
                                         : () => _aiSort(selection: _selection),
                                     onSimilar: _busy
@@ -3395,7 +3443,10 @@ class _GalleryPageState extends State<GalleryPage>
                                     onDelete: _busy ? null : _deleteSelection,
                                     onRefine: _busy ? null : _refineSelection,
                                     canRefine: _canRefineSelection,
-                                    onAiSort: _busy || _showArchived
+                                    onAiSort:
+                                        !_aiSortEnabled ||
+                                            _busy ||
+                                            _showArchived
                                         ? null
                                         : () => _aiSort(selection: _selection),
                                     onSimilar: _busy
@@ -3894,11 +3945,11 @@ class GalleryTile extends StatelessWidget {
         ),
         if (onRefine != null && (canRefine?.call() ?? false))
           const PopupMenuItem(value: 'refine', child: Text('AI refine tags…')),
-        PopupMenuItem(
-          value: 'aiSort',
-          enabled: onAiSort != null,
-          child: const _MenuLabel(Icons.auto_awesome_outlined, 'AI sort…'),
-        ),
+        if (onAiSort != null)
+          const PopupMenuItem(
+            value: 'aiSort',
+            child: _MenuLabel(Icons.auto_awesome_outlined, 'AI sort…'),
+          ),
         PopupMenuItem(
           value: 'archive',
           enabled: onArchive != null,
