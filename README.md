@@ -1,5 +1,7 @@
 # Umbra Tags — Flutter desktop
 
+[![CI](https://github.com/lukajk1/umbra-tags-flutter/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/lukajk1/umbra-tags-flutter/actions/workflows/ci.yml)
+
 A desktop image gallery with portable, self-contained libraries.
 
 ## Use a library
@@ -243,6 +245,39 @@ The app keeps its Flutter AppId (`7040E4F7-ABCB-4FE7-AAD9-DC602B72EA63`), per-us
 installation folder and separate shortcuts. WinForms is untouched. App uninstall
 preserves external libraries, settings, and separately installed runtime packs.
 These installers are unsigned; retain accompanying BIN files for Full/Runtime.
+
+Both scripts look for the ML project in the sibling `../umbra-tags-ml` folder by
+default; pass `-MlRoot <folder>` or set `UMBRA_ML_ROOT` to use another checkout.
+
+### CI and automated releases
+
+`.github/workflows/ci.yml` runs `flutter analyze` and `flutter test` on Windows
+(Flutter 3.41.9) for every push and pull request to `master`.
+
+`.github/workflows/release.yml` runs when a `v*` tag is pushed. The tag must match the
+`version:` in `pubspec.yaml` (`v1.0.0` for `1.0.0+1`; a suffix such as `v1.1.0-beta.1`
+makes a pre-release). It tests, builds, packages the **App** installer with the backend
+scripts from `lukajk1/ml-image-classifier` (`master`, or the `ML_REF` repository
+variable) and publishes it with SHA-256 sums on a GitHub Release:
+
+```sh
+git push origin master
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+The **Runtime** pack is built only on request, because it rarely changes and needs the
+MobileNet checkpoints (`best_model.pth`, `model.pth`), which are trained locally and
+not in git. Upload both files once as assets of a release in the ML repository, then:
+
+```sh
+gh workflow run release.yml -f tag=v1.0.0 -f build_runtime=true -f checkpoints_release=<ml-release-tag>
+```
+
+That job recreates the CPU virtualenv, downloads the pinned SigLIP 2 weights (cached
+between runs; it fails if they no longer match the committed `bundle.json` hashes) and
+attaches `UmbraTags-ML-Runtime-<id>.exe` plus its `.bin` slice(s), each under GitHub's
+2 GiB asset limit. The Full single-download installer is still built locally. Release
+installers are not code-signed.
 
 ## Find images for a tag
 

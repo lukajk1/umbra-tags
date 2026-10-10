@@ -4,11 +4,13 @@ param(
     [string]$OutputDirectory,
     [string]$IsccPath,
     [string]$FlutterCommand = 'flutter',
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [string]$MlRoot = $env:UMBRA_ML_ROOT
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$mlRoot = Join-Path (Split-Path -Parent $projectRoot) 'umbra-tags-ml'
+# Defaults to the sibling umbra-tags-ml checkout; CI may pass -MlRoot or set UMBRA_ML_ROOT.
+if ($MlRoot) { $mlRoot = (Resolve-Path -LiteralPath $MlRoot).Path } else { $mlRoot = Join-Path (Split-Path -Parent $projectRoot) 'umbra-tags-ml' }
 if (-not $IsccPath) {
     $compiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue
     if ($compiler) { $IsccPath = $compiler.Source }
@@ -29,7 +31,7 @@ if (-not $BundleDirectory) {
             if ($LASTEXITCODE -ne 0) { throw 'Flutter release build failed.' }
         }
         $BundleDirectory = Join-Path $projectRoot "dist/UmbraTags-$Mode-$stamp"
-        & (Join-Path $PSScriptRoot 'package_windows.ps1') -OutputDirectory $BundleDirectory -Mode $Mode
+        & (Join-Path $PSScriptRoot 'package_windows.ps1') -OutputDirectory $BundleDirectory -Mode $Mode -MlRoot $mlRoot
     } finally { Pop-Location }
 }
 $bundle = (Resolve-Path -LiteralPath $BundleDirectory).Path

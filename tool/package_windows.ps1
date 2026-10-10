@@ -1,7 +1,8 @@
-param([string]$OutputDirectory, [string]$VcRuntimeDirectory, [ValidateSet('App','Full','Runtime')][string]$Mode = 'Full')
+param([string]$OutputDirectory, [string]$VcRuntimeDirectory, [ValidateSet('App','Full','Runtime')][string]$Mode = 'Full', [string]$MlRoot = $env:UMBRA_ML_ROOT)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$mlRoot = Join-Path (Split-Path -Parent $projectRoot) 'umbra-tags-ml'
+# Defaults to the sibling umbra-tags-ml checkout; CI may pass -MlRoot or set UMBRA_ML_ROOT.
+if ($MlRoot) { $mlRoot = (Resolve-Path -LiteralPath $MlRoot).Path } else { $mlRoot = Join-Path (Split-Path -Parent $projectRoot) 'umbra-tags-ml' }
 $releaseRoot = Join-Path $projectRoot 'build/windows/x64/runner/Release'
 $venvPython = Join-Path $mlRoot '.venv/Scripts/python.exe'
 if (-not $OutputDirectory) {

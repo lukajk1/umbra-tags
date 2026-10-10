@@ -1,0 +1,279 @@
+name: Release
+
+# Builds the Windows App installer for every v* tag and attaches it to a GitHub Release.
+# The ML runtime pack (Python + PyTorch + SigLIP 2 weights + MobileNet checkpoints, ~1.6 GB)
+# changes rarely, so it is only built on request via workflow_dispatch (build_runtime: true).
+#
+#   git tag v1.0.0 && git push origin v1.0.0            -> App installer on release v1.0.0
+#   gh workflow run release.yml -f tag=v1.0.0 -f build_runtime=true -f checkpoints_release=<tag>
+#                                                       -> adds the runtime pack to v1.0.0
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and attach assets to (e.g. v1.0.0). Empty = build only, upload as workflow artifacts.
+        type: string
+        default: ''
+      build_runtime:
+        description: Also build the ML runtime pack (needs checkpoints_release or the ML_CHECKPOINTS_RELEASE variable).
+        type: boolean
+        default: false
+      checkpoints_release:
+        description: Release tag in lukajk1/ml-image-classifier whose assets include best_model.pth and model.pth.
+        type: string
+        default: ''
+      ml_ref:
+        description: umbra-tags-ml branch, tag or commit to package (default master or the ML_REF variable).
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: 3.41.9
+  ML_REPOSITORY: lukajk1/ml-image-classifier
+  ML_REF: ${{ inputs.ml_ref || vars.ML_REF || 'master' }}
+  RELEASE_TAG: ${{ inputs.tag || (github.ref_type == 'tag' && github.ref_name) || '' }}
+  # The packaging scripts default to a sibling ../umbra-tags-ml; both repos are checked out
+  # side by side under the workspace, and this makes the location explicit.
+  UMBRA_ML_ROOT: ${{ github.workspace }}\umbra-tags-ml
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  app:
+    name: App installer
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out app
+        uses: actions/checkout@v7
+        with:
+          path: umbra-tags-flutter
+          ref: ${{ env.RELEASE_TAG || github.ref }}
+
+      - name: Check out ML backend scripts
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ env.ML_REPOSITORY }}
+          ref: ${{ env.ML_REF }}
+          path: umbra-tags-ml
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Check tag matches pubspec version
+        working-directory: umbra-tags-flutter
+        run: |
+          $version = [regex]::Match((Get-Content -LiteralPath pubspec.yaml -Raw), '(?m)^version:\s*(\d+\.\d+\.\d+)').Groups[1].Value
+          if (-not $version) { throw 'Could not read version from pubspec.yaml.' }
+          if ($env:RELEASE_TAG) {
+            $tagVersion = $env:RELEASE_TAG -replace '^v', '' -replace '[-+].*$', ''
+            if ($tagVersion -ne $version) {
+              throw "Tag $env:RELEASE_TAG does not match pubspec.yaml version $version. The installer is versioned from pubspec.yaml; bump it or retag."
+            }
+          }
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Test
+        working-directory: umbra-tags-flutter
+        run: |
+          flutter pub get
+          flutter test
+
+      - name: Build Windows release
+        working-directory: umbra-tags-flutter
+        run: flutter build windows --release
+
+      - name: Ensure Inno Setup 6
+        run: |
+          if (-not (Get-Command ISCC.exe -ErrorAction SilentlyContinue) -and
+              -not (Test-Path -LiteralPath (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'))) {
+            choco install innosetup -y --no-progress
+          }
+
+      - name: Package and build App installer
+        working-directory: umbra-tags-flutter
+        run: |
+          $bundle = Join-Path $env:RUNNER_TEMP 'bundle-app'
+          $installer = Join-Path $env:GITHUB_WORKSPACE 'release-assets/app'
+          & ./tool/package_windows.ps1 -Mode App -OutputDirectory $bundle
+          & ./tool/build_installer.ps1 -Mode App -BundleDirectory $bundle -OutputDirectory $installer
+          $files = Get-ChildItem -LiteralPath $installer -File
+          if (-not $files) { throw 'No installer was produced.' }
+          $files | ForEach-Object { "{0}  {1}" -f (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLower(), $_.Name } |
+            Set-Content -LiteralPath (Join-Path $installer 'SHA256SUMS-app.txt') -Encoding ascii
+          Get-ChildItem -LiteralPath $installer | Format-Table Name, Length
+          exit 0  # robocopy leaves non-zero success codes in $LASTEXITCODE; real failures throw above.
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: UmbraTags-App-${{ env.APP_VERSION }}
+          path: release-assets/app/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        if: env.RELEASE_TAG != ''
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Umbra Tags ${{ env.RELEASE_TAG }}
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: release-assets/app/*
+          body: |
+            **Windows (x64), unsigned.** SmartScreen may warn on first run ("More info" -> "Run anyway").
+
+            - `UmbraTags-Flutter-App-Setup-*.exe`: the app. Upgrades an existing installation in place;
+              ML models already installed (Full install or runtime pack) keep working.
+            - New machine and you want ML features (classify, find similar, tag suggestions)? Also install the
+              ML runtime pack `UmbraTags-ML-Runtime-<id>.exe` **with its `.bin` file(s) in the same folder**.
+              Runtime packs are attached only to releases where the runtime changed; use the newest one whose
+              ID matches `runtime-requirements.json`. Without it the app still manages libraries and reports
+              an actionable error when ML is requested.
+
+  runtime:
+    name: ML runtime pack
+    if: github.event_name == 'workflow_dispatch' && inputs.build_runtime
+    needs: app  # Serialises release uploads and reuses the same tag checks.
+    runs-on: windows-latest
+    timeout-minutes: 180
+    steps:
+      # bundle.json hashes were computed from CRLF text files (Windows checkout of the ML repo).
+      # Pin the conversion explicitly so the packaged config/tokenizer files verify at runtime.
+      - name: Use Windows line endings for checkouts
+        run: git config --global core.autocrlf true
+
+      - name: Check out app (installer scripts)
+        uses: actions/checkout@v7
+        with:
+          path: umbra-tags-flutter
+          ref: ${{ env.RELEASE_TAG || github.ref }}
+
+      - name: Check out ML repository
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ env.ML_REPOSITORY }}
+          ref: ${{ env.ML_REF }}
+          path: umbra-tags-ml
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'  # Must match runtime-requirements.json "python".
+          cache: pip
+          cache-dependency-path: umbra-tags-ml/requirements.txt
+
+      - name: Create ML virtualenv (CPU PyTorch)
+        working-directory: umbra-tags-ml
+        run: |
+          python -m venv .venv
+          $py = '.venv/Scripts/python.exe'
+          & $py -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.14.0 torchvision==0.29.0
+          if ($LASTEXITCODE) { throw 'torch install failed' }
+          & $py -m pip install -r requirements.txt
+          if ($LASTEXITCODE) { throw 'requirements install failed' }
+          # The packaged site-packages should match the uv-built local venv, which has no pip.
+          & $py -m pip uninstall -y pip
+          exit 0
+
+      - name: Restore SigLIP 2 weights
+        id: weights
+        uses: actions/cache@v6
+        with:
+          path: umbra-tags-ml/models/*/model.safetensors
+          key: siglip2-weights-${{ hashFiles('umbra-tags-ml/prepare_similarity_model.py', 'umbra-tags-ml/prepare_tag_model.py', 'umbra-tags-ml/models/*/bundle.json') }}
+
+      - name: Download and export SigLIP 2 weights (~1.5 GB)
+        if: steps.weights.outputs.cache-hit != 'true'
+        working-directory: umbra-tags-ml
+        run: |
+          & .venv/Scripts/python.exe prepare_similarity_model.py
+          if ($LASTEXITCODE) { throw 'prepare_similarity_model.py failed' }
+          & .venv/Scripts/python.exe prepare_tag_model.py
+          if ($LASTEXITCODE) { throw 'prepare_tag_model.py failed' }
+          git diff --stat -- models
+          git diff --quiet -- 'models/*/bundle.json'
+          if ($LASTEXITCODE) {
+            git diff -- 'models/*/bundle.json'
+            throw 'Re-exported weights do not match the committed bundle.json hashes (different transformers/torch output?). Commit the new manifests deliberately (and bump runtimeId) or fix the environment.'
+          }
+
+      - name: Verify weights against bundle manifests
+        working-directory: umbra-tags-ml
+        run: |
+          & .venv/Scripts/python.exe -c "import json; from pathlib import Path; from tag_worker import verify_bundle; [verify_bundle(Path(d), json.loads((Path(d) / 'bundle.json').read_text(encoding='utf-8'))) for d in ('models/siglip2-base-224', 'models/siglip2-text-224')]; print('model bundles verified')"
+          if ($LASTEXITCODE) { throw 'Model bundle verification failed.' }
+
+      - name: Download MobileNet checkpoints
+        working-directory: umbra-tags-ml
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKPOINTS_RELEASE: ${{ inputs.checkpoints_release || vars.ML_CHECKPOINTS_RELEASE }}
+        run: |
+          # best_model.pth / model.pth are trained locally and gitignored; they cannot be regenerated in CI.
+          if (-not $env:CHECKPOINTS_RELEASE) {
+            throw "Upload best_model.pth and model.pth as assets of a release in $env:ML_REPOSITORY, then pass its tag as checkpoints_release (or set the ML_CHECKPOINTS_RELEASE repository variable)."
+          }
+          gh release download $env:CHECKPOINTS_RELEASE --repo $env:ML_REPOSITORY --pattern best_model.pth --pattern model.pth --dir . --clobber
+          if ($LASTEXITCODE) { throw 'Checkpoint download failed.' }
+          foreach ($name in 'best_model.pth', 'model.pth') {
+            if (-not (Test-Path -LiteralPath $name)) { throw "$name missing from release $env:CHECKPOINTS_RELEASE" }
+            "{0}  {1}" -f (Get-FileHash -Algorithm SHA256 -LiteralPath $name).Hash.ToLower(), $name
+          }
+
+      - name: Ensure Inno Setup 6
+        run: |
+          if (-not (Get-Command ISCC.exe -ErrorAction SilentlyContinue) -and
+              -not (Test-Path -LiteralPath (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'))) {
+            choco install innosetup -y --no-progress
+          }
+
+      - name: Package and build runtime installer
+        working-directory: umbra-tags-flutter
+        run: |
+          $bundle = Join-Path $env:RUNNER_TEMP 'bundle-runtime'
+          $installer = Join-Path $env:GITHUB_WORKSPACE 'release-assets/runtime'
+          & ./tool/package_windows.ps1 -Mode Runtime -OutputDirectory $bundle
+          & ./tool/build_installer.ps1 -Mode Runtime -BundleDirectory $bundle -OutputDirectory $installer
+          $files = Get-ChildItem -LiteralPath $installer -File
+          if (-not $files) { throw 'No runtime installer was produced.' }
+          # GitHub release assets must each be under 2 GiB; Inno's default disk slices (~1.96 GiB) fit.
+          $tooLarge = $files | Where-Object Length -ge 2GB
+          if ($tooLarge) { throw "Release assets must be under 2 GiB: $($tooLarge.Name -join ', ')" }
+          $files | ForEach-Object { "{0}  {1}" -f (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLower(), $_.Name } |
+            Set-Content -LiteralPath (Join-Path $installer 'SHA256SUMS-runtime.txt') -Encoding ascii
+          Get-ChildItem -LiteralPath $installer | Format-Table Name, Length
+          exit 0  # robocopy leaves non-zero success codes in $LASTEXITCODE; real failures throw above.
+
+      - name: Attach to GitHub Release
+        if: env.RELEASE_TAG != ''
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          fail_on_unmatched_files: true
+          files: release-assets/runtime/*
+
+      - name: Upload workflow artifact (no release tag)
+        if: env.RELEASE_TAG == ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: UmbraTags-ML-Runtime
+          path: release-assets/runtime/*
+          if-no-files-found: error
+          retention-days: 3
