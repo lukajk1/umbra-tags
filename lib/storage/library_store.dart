@@ -141,8 +141,9 @@ class LibraryStore {
 
   String absolutePath(String relative) => _resolve(root, relative);
 
-  /// [excludeHidden] leaves out images whose tags are excluded from All
-  /// images; it applies only without a [tagId].
+  /// Images under a reference tag appear only in that tag's view or a view
+  /// beneath it. Without a [tagId], [excludeHidden] applies that rule to All
+  /// images; tag views always apply it (archived views never do).
   Future<List<LibraryAsset>> assets({
     bool archived = false,
     bool untagged = false,

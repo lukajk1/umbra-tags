@@ -1603,8 +1603,8 @@ class _GalleryPageState extends State<GalleryPage>
     if (mounted) {
       setState(
         () => _status = tag.excludedFromAll
-            ? '“${tag.name}” images are shown in All images again'
-            : '“${tag.name}” images are hidden from All images',
+            ? '“${tag.name}” is no longer a reference tag'
+            : '“${tag.name}” is now a reference tag: its images only show when you filter by it',
       );
     }
   });

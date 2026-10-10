@@ -48,8 +48,12 @@ cannot be opened by app versions that predate the new schema. The manifest ID mu
 * `tag_groups`, `tags`, `asset_tags`: normalized organization. Tag hierarchy uses
   parent IDs; children and depth are derived. Tag operations
   prevent multi-node cycles. SQLite NOCASE uniqueness is ASCII case insensitive.
-  `tags.excluded_from_all` (catalog v3) hides images carrying that tag, or any of
-  its descendants, from the All images view only.
+  `tags.excluded_from_all` (catalog v3) marks a reference tag: outside the
+  archive, images carrying it or any of its descendants are hidden from every
+  view (All images and tag views) except views filtered by that tag or one of
+  its descendants. Reference tags nested inside the filtered tag, or inside a
+  reference tag above it, still hide their images. Tag counts follow the same
+  rule.
 * `predictions`: model/version, label, confidence, analyzed content hash, and date.
   Suggestions are separate from confirmed tags. Local classifiers save all scores,
   recording the checkpoint SHA-256 as the model version. The optional best-label

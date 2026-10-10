@@ -7,6 +7,10 @@ import 'tag_suggestions_panel.dart';
 
 enum LibraryView { all, untagged, archived }
 
+/// Tint marking reference tags (and, faintly, tags inside them) in the
+/// sidebar.
+const referenceTagColor = Color(0xFFFFE082); // Colors.amber.shade200
+
 List<({LibraryTag tag, int depth})> tagTree(List<LibraryTag> tags) {
   final result = <({LibraryTag tag, int depth})>[];
   final seen = <String>{};
@@ -189,7 +193,11 @@ class TagSidebar extends StatefulWidget {
     this.viewCounts = const {},
     this.collapsedTags = const {},
     this.onToggleCollapsed,
+    this.width = 220,
   });
+
+  /// The sidebar's width; the app lets the user resize it.
+  final double width;
   final List<LibraryTag> tags;
   final LibraryView view;
   final String? selectedTag;
@@ -200,7 +208,8 @@ class TagSidebar extends StatefulWidget {
   final ValueChanged<LibraryTag> onEdit, onDelete;
   final ValueChanged<LibraryTag>? onFindMatches;
 
-  /// Toggles whether the tag's images are left out of All images.
+  /// Toggles whether the tag is a reference tag, whose images only appear
+  /// when filtering by it (or one of its descendants).
   final ValueChanged<LibraryTag>? onToggleExcluded;
 
   /// Image counts shown beside All images, Untagged and Archived.
@@ -231,9 +240,7 @@ class _TagSidebarState extends State<TagSidebar> {
       PopupMenuItem(
         value: 'exclude',
         child: Text(
-          tag.excludedFromAll
-              ? 'Show in All images'
-              : 'Exclude from All images',
+          tag.isReference ? 'Unmark reference tag' : 'Mark as reference tag',
         ),
       ),
     PopupMenuItem(value: 'child', child: Text('Add child tag')),
@@ -265,6 +272,39 @@ class _TagSidebarState extends State<TagSidebar> {
     );
   }
 
+  static bool _hasReferenceAncestor(
+    LibraryTag tag,
+    Map<String, LibraryTag> byId,
+  ) {
+    final seen = <String>{tag.id};
+    for (var at = byId[tag.parentId]; at != null; at = byId[at.parentId]) {
+      if (!seen.add(at.id)) return false;
+      if (at.isReference) return true;
+    }
+    return false;
+  }
+
+  /// The row's tag icon: reference tags get a tinted bookmark, and tags
+  /// inside a reference tag a faint version of that tint.
+  Widget _tagIcon(LibraryTag tag, bool insideReference) {
+    if (tag.isReference) {
+      return Tooltip(
+        message: 'Reference tag: its images only appear when you filter by it',
+        child: Icon(
+          Icons.collections_bookmark_outlined,
+          key: ValueKey('reference-tag-icon-${tag.id}'),
+          size: 18,
+          color: referenceTagColor,
+        ),
+      );
+    }
+    return Icon(
+      Icons.label_outline,
+      size: 18,
+      color: insideReference ? referenceTagColor.withValues(alpha: 0.55) : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final parents = {for (final tag in widget.tags) ?tag.parentId};
@@ -276,8 +316,14 @@ class _TagSidebarState extends State<TagSidebar> {
               )
               .toList();
     final guides = tagTreeGuides([for (final row in rows) row.depth]);
+    // Tags nested inside a reference tag, which share its tint faintly.
+    final byId = {for (final tag in widget.tags) tag.id: tag};
+    final insideReference = <String>{
+      for (final tag in widget.tags)
+        if (_hasReferenceAncestor(tag, byId)) tag.id,
+    };
     return SizedBox(
-      width: 220,
+      width: widget.width,
       child: ColoredBox(
         color: const Color(0xff171717),
         child: Column(
@@ -307,6 +353,8 @@ class _TagSidebarState extends State<TagSidebar> {
                     fontFamily: 'LibreBaskerville',
                     fontWeight: FontWeight.w400,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 selected: widget.view == view && widget.selectedTag == null,
                 onTap: widget.busy ? null : () => widget.onView(view),
@@ -414,18 +462,10 @@ class _TagSidebarState extends State<TagSidebar> {
                                   children: [
                                     _expander(row.tag, parents),
                                     const SizedBox(width: 2),
-                                    row.tag.excludedFromAll
-                                        ? const Tooltip(
-                                            message: 'Excluded from All images',
-                                            child: Icon(
-                                              Icons.visibility_off_outlined,
-                                              size: 18,
-                                            ),
-                                          )
-                                        : const Icon(
-                                            Icons.label_outline,
-                                            size: 18,
-                                          ),
+                                    _tagIcon(
+                                      row.tag,
+                                      insideReference.contains(row.tag.id),
+                                    ),
                                   ],
                                 ),
                                 minLeadingWidth: 16,
@@ -434,11 +474,18 @@ class _TagSidebarState extends State<TagSidebar> {
                                   child: Text.rich(
                                     TextSpan(
                                       text: row.tag.name,
+                                      style: row.tag.isReference
+                                          ? const TextStyle(
+                                              fontStyle: FontStyle.italic,
+                                              color: referenceTagColor,
+                                            )
+                                          : null,
                                       children: [
                                         TextSpan(
                                           text: ' (${row.tag.assetCount})',
                                           style: const TextStyle(
                                             color: Colors.white54,
+                                            fontStyle: FontStyle.normal,
                                           ),
                                         ),
                                       ],

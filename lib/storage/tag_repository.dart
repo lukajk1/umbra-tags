@@ -11,11 +11,17 @@ class LibraryTag {
   final String id, name;
   final String? parentId;
 
-  /// Images with this tag or a descendant are left out of All images.
+  /// Whether this is a reference tag (stored as `excluded_from_all`): images
+  /// carrying it or a descendant are hidden from every view except views
+  /// filtered by this tag or one of its descendants.
   final bool excludedFromAll;
 
+  /// A reference tag; see [excludedFromAll].
+  bool get isReference => excludedFromAll;
+
   /// Non-archived images shown in this tag's view: those with the tag or any
-  /// of its descendants.
+  /// of its descendants, minus images hidden by reference tags other than
+  /// this tag and its ancestors.
   final int assetCount;
 }
 
@@ -28,23 +34,67 @@ class TagRepository {
     UNION SELECT t.id FROM tags t JOIN descendants d ON t.parent_id = d.id
   )''';
 
-  List<Map<String, Object?>> tags() => db
-      .select('''WITH RECURSIVE tree(root, id) AS (
-          SELECT id, id FROM tags
-          UNION SELECT tree.root, t.id FROM tags t JOIN tree ON t.parent_id = tree.id
-        ),
-        counts(root, n) AS (
-          SELECT tree.root, COUNT(DISTINCT at.asset_id) FROM tree
-          JOIN asset_tags at ON at.tag_id = tree.id
-          JOIN assets a ON a.id = at.asset_id AND a.archived = 0
-          GROUP BY tree.root
-        )
-        SELECT t.id,t.name,t.parent_id,t.excluded_from_all,
-          COALESCE(c.n, 0) AS asset_count
-        FROM tags t LEFT JOIN counts c ON c.root = t.id
-        ORDER BY t.name COLLATE NOCASE,t.id''')
-      .map((r) => Map<String, Object?>.from(r))
-      .toList();
+  /// Every tag with its view's image count (see [LibraryTag.assetCount]).
+  /// Counts are computed here rather than in SQL because with reference tags
+  /// each view's rule depends on the view tag's own ancestors.
+  List<Map<String, Object?>> tags() {
+    final rows = db
+        .select('''SELECT id,name,parent_id,excluded_from_all FROM tags
+          ORDER BY name COLLATE NOCASE,id''')
+        .map((r) => Map<String, Object?>.from(r))
+        .toList();
+    final parent = {
+      for (final row in rows) row['id'] as String: row['parent_id'] as String?,
+    };
+    final references = {
+      for (final row in rows)
+        if (row['excluded_from_all'] == 1) row['id'] as String,
+    };
+    // Each tag with its ancestors.
+    final lineage = <String, Set<String>>{};
+    for (final id in parent.keys) {
+      final chain = <String>{};
+      for (
+        String? at = id;
+        at != null && parent.containsKey(at);
+        at = parent[at]
+      ) {
+        if (!chain.add(at)) break;
+      }
+      lineage[id] = chain;
+    }
+    final assetTags = <String, List<String>>{};
+    for (final row in db.select('''SELECT at.asset_id,at.tag_id
+        FROM asset_tags at JOIN assets a ON a.id = at.asset_id
+        WHERE a.archived = 0''')) {
+      (assetTags[row['asset_id'] as String] ??= []).add(
+        row['tag_id'] as String,
+      );
+    }
+    final counts = <String, int>{};
+    for (final tagIds in assetTags.values) {
+      // Views that would list the image: its tags and their ancestors. It
+      // stays in a view only if every reference tag above (or among) its tags
+      // is the view tag or one of the view tag's ancestors.
+      final views = <String>{};
+      final referenced = <String>{};
+      for (final tag in tagIds) {
+        for (final at in lineage[tag] ?? const <String>{}) {
+          views.add(at);
+          if (references.contains(at)) referenced.add(at);
+        }
+      }
+      for (final view in views) {
+        if (referenced.every(lineage[view]!.contains)) {
+          counts[view] = (counts[view] ?? 0) + 1;
+        }
+      }
+    }
+    for (final row in rows) {
+      row['asset_count'] = counts[row['id']] ?? 0;
+    }
+    return rows;
+  }
 
   String save({String? id, required String name, String? parentId}) {
     name = name.trim();
@@ -141,7 +191,7 @@ class TagRepository {
   }
 
   /// Image counts for the built-in views, matching what each view lists:
-  /// All images leaves out images hidden by excluded tags.
+  /// All images leaves out images hidden by reference tags.
   Map<String, int> viewCounts() {
     int count(Map args) => assets(args).length;
     return {
@@ -151,26 +201,49 @@ class TagRepository {
     };
   }
 
+  /// Images for a view. Outside the archive, reference tags (stored as
+  /// `excluded_from_all`) hide images carrying them or a descendant unless
+  /// the view is filtered by that reference tag or one of its descendants.
+  /// Tag views always apply this; the unfiltered view only with
+  /// `excludeHidden` (All images).
   List<Map<String, Object?>> assets(Map args) {
     final tagId = args['tagId'] as String?;
-    final excludeHidden = args['excludeHidden'] == true && tagId == null;
-    final parameters = <Object?>[?tagId, args['archived'] == true ? 1 : 0];
-    // Tags excluded from All images, with their descendants.
-    const excluded = '''WITH RECURSIVE excluded(id) AS (
-      SELECT id FROM tags WHERE excluded_from_all = 1
-      UNION SELECT t.id FROM tags t JOIN excluded e ON t.parent_id = e.id
-    )''';
+    final archived = args['archived'] == true;
+    final hideReferenced =
+        !archived && (tagId != null || args['excludeHidden'] == true);
+    final ctes = <String>[];
+    final parameters = <Object?>[];
+    if (tagId != null) {
+      ctes.add('''descendants(id) AS (
+        SELECT id FROM tags WHERE id = ?
+        UNION SELECT t.id FROM tags t JOIN descendants d ON t.parent_id = d.id
+      )''');
+      parameters.add(tagId);
+    }
+    if (hideReferenced) {
+      // The view tag and its ancestors (none without a tag): reference tags
+      // among them hide nothing here. Every other reference tag hides its
+      // whole subtree, including reference tags nested inside the view tag.
+      ctes.add('''ancestors(id) AS (
+        SELECT id FROM tags WHERE id = ?
+        UNION SELECT t.parent_id FROM tags t JOIN ancestors an ON t.id = an.id
+          WHERE t.parent_id IS NOT NULL
+      )''');
+      parameters.add(tagId);
+      ctes.add('''hidden(id) AS (
+        SELECT id FROM tags WHERE excluded_from_all = 1
+          AND id NOT IN (SELECT id FROM ancestors)
+        UNION SELECT t.id FROM tags t JOIN hidden h ON t.parent_id = h.id
+      )''');
+    }
+    parameters.add(archived ? 1 : 0);
     final query =
-        '''${tagId != null
-            ? descendants
-            : excludeHidden
-            ? excluded
-            : ''}
+        '''${ctes.isEmpty ? '' : 'WITH RECURSIVE ${ctes.join(',\n')}'}
       SELECT a.* FROM assets a WHERE a.archived = ?
       ${args['starredOnly'] == true ? 'AND a.starred = 1' : ''}
       ${args['untagged'] == true ? 'AND NOT EXISTS (SELECT 1 FROM asset_tags at WHERE at.asset_id = a.id)' : ''}
       ${tagId == null ? '' : 'AND EXISTS (SELECT 1 FROM asset_tags at JOIN descendants d ON d.id = at.tag_id WHERE at.asset_id = a.id)'}
-      ${excludeHidden ? 'AND NOT EXISTS (SELECT 1 FROM asset_tags at JOIN excluded e ON e.id = at.tag_id WHERE at.asset_id = a.id)' : ''}
+      ${hideReferenced ? 'AND NOT EXISTS (SELECT 1 FROM asset_tags at JOIN hidden h ON h.id = at.tag_id WHERE at.asset_id = a.id)' : ''}
       ORDER BY a.imported_at DESC,a.id''';
     final result = db
         .select(query, parameters)
