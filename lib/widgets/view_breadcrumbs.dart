@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme.dart';
 
 import '../storage/tag_repository.dart';
 import 'tag_widgets.dart';
@@ -66,7 +67,7 @@ class ViewBreadcrumbs extends StatelessWidget {
     ];
     return Container(
       height: 32,
-      color: const Color(0xFF171717), // AppColors.darker, like the side panels
+      color: AppColors.panel,
       padding: const EdgeInsets.only(left: 12, right: 8),
       child: Row(
         children: [
@@ -163,7 +164,7 @@ class _StarredToggle extends StatelessWidget {
             Icon(
               on ? Icons.star : Icons.star_outline,
               size: 16,
-              color: on ? const Color(0xFFE8B63C) : Colors.white54,
+              color: on ? AppColors.star : Colors.white54,
             ),
             const SizedBox(width: 4),
             Text(

@@ -31,6 +31,7 @@ import 'widgets/downloads_import_dialog.dart';
 import 'widgets/exact_masonry.dart';
 import 'widgets/view_breadcrumbs.dart';
 import 'widgets/resize_dialog.dart';
+import 'theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,13 +72,6 @@ Future<void> _saveSession(
   } catch (_) {}
 }
 
-abstract final class AppColors {
-  static const darker = Color(0xFF171717);
-  static const lighter = Color(0xFF262622);
-  static const accent = Color(0xFFB5372D);
-  static const star = Color(0xFFE8B63C);
-}
-
 enum LayoutMode { crop, letterbox, masonry }
 
 double _settingNumber(Object? value, double fallback, double min, double max) =>
@@ -94,46 +88,7 @@ class GalleryApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Umbra Tags',
-      theme: ThemeData.dark().copyWith(
-        colorScheme: const ColorScheme.dark(
-          primary: AppColors.accent,
-          onPrimary: Colors.white,
-          secondary: AppColors.accent,
-          onSecondary: Colors.white,
-          surface: AppColors.darker,
-        ),
-        scaffoldBackgroundColor: AppColors.lighter,
-        // The serif face everywhere: menus, dialogs, fields and tooltips all
-        // draw from these text themes.
-        textTheme: ThemeData.dark().textTheme.apply(
-          fontFamily: 'LibreBaskerville',
-        ),
-        primaryTextTheme: ThemeData.dark().primaryTextTheme.apply(
-          fontFamily: 'LibreBaskerville',
-        ),
-        // Match the side panels; Material 3 otherwise tints the bar with the
-        // accent colour.
-        appBarTheme: const AppBarTheme(
-          backgroundColor: AppColors.darker,
-          surfaceTintColor: Colors.transparent,
-          scrolledUnderElevation: 0,
-        ),
-        sliderTheme: const SliderThemeData(
-          activeTrackColor: AppColors.accent,
-          thumbColor: AppColors.accent,
-          overlayColor: Color(0x29B5372D),
-        ),
-        segmentedButtonTheme: SegmentedButtonThemeData(
-          style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
-                return AppColors.accent;
-              }
-              return null;
-            }),
-          ),
-        ),
-      ),
+      theme: buildAppTheme(),
       home: AppShell(startReceiver: startReceiver, sessionFile: sessionFile),
       debugShowCheckedModeBanner: false,
     );
@@ -2388,6 +2343,10 @@ class _GalleryPageState extends State<GalleryPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(4),
+          child: RepaintBoundary(child: DitherStrip()),
+        ),
         title: MenuBar(
           style: const MenuStyle(
             backgroundColor: WidgetStatePropertyAll(Colors.transparent),
@@ -2538,6 +2497,12 @@ class _GalleryPageState extends State<GalleryPage>
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 isDense: true,
+                // Translucent on the ultramarine bar.
+                fillColor: const Color(0x61070A33),
+                enabledBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.zero,
+                  borderSide: BorderSide(color: Color(0x47F3F5FF)),
+                ),
                 hintText: 'Describe an image… e.g. green statue',
                 prefixIcon: const Icon(Icons.search, size: 18),
                 suffixIcon: _textQuery == null
@@ -2783,7 +2748,7 @@ class _GalleryPageState extends State<GalleryPage>
                   child: MouseRegion(
                     key: const ValueKey('sidebar-resize-handle'),
                     cursor: SystemMouseCursors.resizeColumn,
-                    child: Container(width: 6, color: Colors.white12),
+                    child: Container(width: 6, color: AppColors.rule),
                   ),
                 ),
                 Expanded(
@@ -3153,7 +3118,7 @@ class _GalleryPageState extends State<GalleryPage>
                     child: MouseRegion(
                       key: const ValueKey('preview-resize-handle'),
                       cursor: SystemMouseCursors.resizeColumn,
-                      child: Container(width: 6, color: Colors.white12),
+                      child: Container(width: 6, color: AppColors.rule),
                     ),
                   ),
                   // Preview pane

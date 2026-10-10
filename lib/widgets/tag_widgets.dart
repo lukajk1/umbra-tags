@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../theme.dart';
 import '../storage/library_store.dart';
 import '../storage/tag_repository.dart';
 import '../ml/tag_suggester.dart';
@@ -9,7 +10,9 @@ enum LibraryView { all, untagged, archived }
 
 /// Tint marking reference tags (and, faintly, tags inside them) in the
 /// sidebar.
-const referenceTagColor = Color(0xFFFFE082); // Colors.amber.shade200
+const referenceTagColor = Color(
+  0xFFC8D0FF,
+); // Pale foam-blue, Ultramarine theme
 
 List<({LibraryTag tag, int depth})> tagTree(List<LibraryTag> tags) {
   final result = <({LibraryTag tag, int depth})>[];
@@ -325,7 +328,7 @@ class _TagSidebarState extends State<TagSidebar> {
     return SizedBox(
       width: widget.width,
       child: ColoredBox(
-        color: const Color(0xff171717),
+        color: AppColors.panel,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -528,7 +531,7 @@ class _TagDragFeedback extends StatelessWidget {
   Widget build(BuildContext context) => Transform.translate(
     offset: const Offset(12, 8),
     child: Material(
-      color: const Color(0xFF262622),
+      color: AppColors.raised,
       elevation: 6,
       borderRadius: BorderRadius.circular(14),
       child: Padding(
