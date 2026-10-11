@@ -24,6 +24,7 @@ bool _checked(WidgetTester tester, String id) =>
 Future<List<String>> _openAndScan(
   WidgetTester tester, {
   Size size = const Size(1600, 1200),
+  ScanTagMatches? scanSemantic,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -41,6 +42,7 @@ Future<List<String>> _openAndScan(
               assets: [for (final id in _scores.keys) _asset(id)],
               classifierLabels: const [],
               score: (asset, source, label) async => _scores[asset.id]!,
+              scanSemantic: scanSemantic,
               thumbnail: (_) async => null,
               onApply: (assets) async =>
                   applied.addAll(assets.map((a) => a.id)),
@@ -166,7 +168,7 @@ void main() {
     await tester.tap(_tile('a'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('tag-match-preview')), findsOneWidget);
-    expect(find.textContaining('a.png · Rank score 0.500'), findsOneWidget);
+    expect(find.textContaining('a.png · Match score 0.500'), findsOneWidget);
     await tester.tap(find.byTooltip('Close (Esc)'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('tag-match-preview')), findsNothing);
@@ -177,5 +179,90 @@ void main() {
     await _openAndScan(tester, size: const Size(1024, 680));
     expect(find.text('3 selected of 3'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('scans by the tag name alone without the batch scorer', (
+    tester,
+  ) async {
+    await _openAndScan(tester);
+    expect(find.text('Matching by the tag name.'), findsOneWidget);
+  });
+
+  testWidgets('matches by the images in the tag plus the name', (tester) async {
+    var stoppedAsked = false;
+    await _openAndScan(
+      tester,
+      scanSemantic: (progress, stopped) async {
+        progress(0, 2);
+        progress(2, 2);
+        stoppedAsked = !stopped();
+        return const TagMatchBatch(
+          scores: {'a': 0.9, 'b': 0.7, 'c': 0.4, 'd': 0.55, 'other': 1.0},
+          members: 41,
+          nameWeight: 0.5,
+          threshold: 0.6,
+          errors: {'d': 'ignored: d has a score', 'zz': 'not in this dialog'},
+        );
+      },
+    );
+    expect(stoppedAsked, isTrue);
+    expect(
+      find.text('Matching by 41 images in this tag + the tag name'),
+      findsOneWidget,
+    );
+    // The suggested threshold (a typical member's score) preselects a and b.
+    expect(find.text('2 selected of 2'), findsOneWidget);
+    expect(find.text('Minimum Match score 0.600'), findsOneWidget);
+    expect(find.text('4 / 4 scanned · 0 failed'), findsOneWidget);
+    final field = find.byKey(const ValueKey('match-threshold-field'));
+    expect(tester.widget<TextField>(field).controller!.text, '0.6000');
+    // A threshold the user picks survives the next scan.
+    await tester.enterText(field, '0.5');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.text('3 selected of 3'), findsOneWidget);
+    await tester.tap(find.text('Scan again'));
+    await tester.pumpAndSettle();
+    expect(find.text('3 selected of 3'), findsOneWidget);
+  });
+
+  testWidgets('says when the tag name is ignored or the only signal', (
+    tester,
+  ) async {
+    var batch = const TagMatchBatch(
+      scores: {'a': 0.9},
+      members: 3,
+      nameWeight: 0,
+      threshold: 0.8,
+    );
+    await _openAndScan(tester, scanSemantic: (_, _) async => batch);
+    expect(
+      find.text(
+        'Matching by 3 images in this tag (the tag name does not describe them, so it is not used)',
+      ),
+      findsOneWidget,
+    );
+    batch = const TagMatchBatch(scores: {'a': 0.1}, members: 0);
+    await tester.tap(find.text('Scan again'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(
+        'Matching by the tag name only: this tag has no indexed images yet.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('falls back to per-image name scores without the index', (
+    tester,
+  ) async {
+    await _openAndScan(tester, scanSemantic: (_, _) async => null);
+    expect(
+      find.text(
+        'Matching by the tag name only: the similarity index is unavailable.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('3 selected of 3'), findsOneWidget);
   });
 }

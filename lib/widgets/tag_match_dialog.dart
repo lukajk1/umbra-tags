@@ -14,6 +14,44 @@ typedef ScoreTagImage =
       String label,
     );
 
+/// A whole semantic scan scored at once from stored vectors: similarity to
+/// the images already in the tag plus the tag name (see `ml/tag_match.dart`).
+class TagMatchBatch {
+  const TagMatchBatch({
+    required this.scores,
+    required this.members,
+    this.errors = const {},
+    this.nameWeight,
+    this.nameError,
+    this.threshold,
+  });
+
+  /// Score per asset id.
+  final Map<String, double> scores;
+  final Map<String, String> errors;
+
+  /// Images in the tag that served as examples; 0 means the name alone.
+  final int members;
+
+  /// The name's weight beside the examples (0: the name is ignored).
+  final double? nameWeight;
+
+  /// Why the tag name could not be used, if it could not.
+  final String? nameError;
+
+  /// Suggested minimum score: how well a typical image in the tag matches.
+  final double? threshold;
+}
+
+/// Scores every image in one go. [progress] reports images being indexed
+/// first; [stopped] asks to finish early. Returns null when the similarity
+/// index is unavailable, and the dialog falls back to per-image scoring.
+typedef ScanTagMatches =
+    Future<TagMatchBatch?> Function(
+      void Function(int done, int total) progress,
+      bool Function() stopped,
+    );
+
 class TagMatchDialog extends StatefulWidget {
   const TagMatchDialog({
     super.key,
@@ -23,6 +61,7 @@ class TagMatchDialog extends StatefulWidget {
     required this.score,
     required this.thumbnail,
     required this.onApply,
+    this.scanSemantic,
     this.classifierError,
     this.classifierThreshold = 0.8,
     this.imagePath,
@@ -32,7 +71,13 @@ class TagMatchDialog extends StatefulWidget {
   final List<String> classifierLabels;
   final String? classifierError;
   final double classifierThreshold;
+
+  /// Scores one image; used for the classifier, and for the semantic source
+  /// without [scanSemantic] or when it returns null (tag name only).
   final ScoreTagImage score;
+
+  /// Scores the semantic source in one pass from stored vectors.
+  final ScanTagMatches? scanSemantic;
   final Future<String?> Function(LibraryAsset) thumbnail;
   final Future<void> Function(List<LibraryAsset>) onApply;
 
@@ -58,6 +103,16 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
   double _tileSize = 240;
   int _processed = 0;
   String? _error;
+
+  /// What the last semantic scan matched by; null before a scan.
+  String? _basis;
+
+  /// Images being indexed before a batch scan can score them.
+  int _indexing = 0, _indexed = 0;
+
+  /// Whether the user moved the semantic threshold; until then each scan
+  /// suggests one.
+  bool _thresholdTouched = false;
   String? _lastTapId;
   DateTime _lastTapAt = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -78,7 +133,7 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
     super.dispose();
   }
 
-  /// The slider spans the scores the scan found (rank scores cluster in a
+  /// The slider spans the scores the scan found (match scores cluster in a
   /// narrow band), or the full range before a scan.
   (double, double) get _sliderRange {
     if (_source == TagMatchSource.classifier) return (0, 1);
@@ -96,12 +151,15 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
     if (_source == TagMatchSource.classifier) {
       _classifierThreshold = value.clamp(0, 1);
     } else {
-      _semanticThreshold = value.clamp(-1, 1);
+      // Blended scores are in cosine units plus a name bonus, so they can
+      // leave [-1, 1] a little.
+      _semanticThreshold = value.clamp(-10, 10);
+      _thresholdTouched = true;
     }
     _selectMatches();
   });
 
-  /// Classifier thresholds are typed as percentages; rank scores as-is.
+  /// Classifier thresholds are typed as percentages; match scores as-is.
   String _thresholdText(double value) => _source == TagMatchSource.classifier
       ? (value * 100).toStringAsFixed(1)
       : value.toStringAsFixed(4);
@@ -136,7 +194,60 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
     _selected.clear();
     _errors.clear();
     _processed = 0;
+    _indexing = _indexed = 0;
     _error = null;
+    _basis = null;
+  }
+
+  static String _describe(TagMatchBatch batch) {
+    final count = batch.members;
+    if (count == 0) {
+      return 'Matching by the tag name only: this tag has no indexed images yet.';
+    }
+    final images = '$count ${count == 1 ? 'image' : 'images'} in this tag';
+    if (batch.nameError != null) {
+      return 'Matching by $images (tag name not used: ${batch.nameError})';
+    }
+    if ((batch.nameWeight ?? 0) > 0) {
+      return 'Matching by $images + the tag name';
+    }
+    return 'Matching by $images (the tag name does not describe them, so it is not used)';
+  }
+
+  /// Scores the semantic source in one pass; false to fall back to per-image
+  /// scoring.
+  Future<bool> _scanBatch(ScanTagMatches scan) async {
+    final batch = await scan((done, total) {
+      if (mounted) {
+        setState(() {
+          _indexed = done;
+          _indexing = total;
+        });
+      }
+    }, () => _stop || !mounted);
+    if (batch == null || !mounted) return false;
+    final ids = {for (final asset in widget.assets) asset.id};
+    setState(() {
+      _scores
+        ..clear()
+        ..addAll({
+          for (final MapEntry(:key, :value) in batch.scores.entries)
+            if (ids.contains(key) && value.isFinite) key: value,
+        });
+      _errors.addAll({
+        for (final MapEntry(:key, :value) in batch.errors.entries)
+          if (ids.contains(key) && !_scores.containsKey(key)) key: value,
+      });
+      _processed = widget.assets.length;
+      _indexing = _indexed = 0;
+      _basis = _describe(batch);
+      if (batch.threshold case final threshold? when !_thresholdTouched) {
+        _semanticThreshold = threshold;
+      }
+      _selectMatches();
+    });
+    _thresholdField.text = _thresholdText(_threshold);
+    return true;
   }
 
   void _selectMatches() {
@@ -157,6 +268,20 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
         ? _classLabel!
         : widget.tagName;
     try {
+      final batch = widget.scanSemantic;
+      if (_source == TagMatchSource.semantic && batch != null) {
+        try {
+          if (await _scanBatch(batch) || !mounted) return;
+        } catch (error) {
+          if (mounted) setState(() => _error = error.toString());
+          return;
+        }
+        // Without the similarity index: the tag name alone, image by image.
+        setState(
+          () => _basis =
+              'Matching by the tag name only: the similarity index is unavailable.',
+        );
+      }
       for (final asset in widget.assets) {
         if (!mounted || _stop) break;
         try {
@@ -213,7 +338,7 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
 
   String _scoreLabel(double score) => _source == TagMatchSource.classifier
       ? '${(score * 100).toStringAsFixed(1)}%'
-      : 'Rank score ${score.toStringAsFixed(3)}';
+      : 'Match score ${score.toStringAsFixed(3)}';
 
   String _shortScore(double score) => _source == TagMatchSource.classifier
       ? '${(score * 100).toStringAsFixed(1)}%'
@@ -414,11 +539,22 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
             child: Text(_stop ? 'Stopping…' : 'Stop'),
           ),
         Text(
-          '$_processed / ${widget.assets.length} scanned · ${_errors.length} failed',
+          _indexing > 0
+              ? 'Indexing new images: $_indexed / $_indexing'
+              : '$_processed / ${widget.assets.length} scanned · ${_errors.length} failed',
           style: const TextStyle(color: AppColors.mist),
         ),
       ],
     );
+  }
+
+  /// What the semantic source matches by, so the score is explainable.
+  String? get _basisText {
+    if (_source != TagMatchSource.semantic) return null;
+    if (_basis != null) return _basis;
+    return widget.scanSemantic == null
+        ? 'Matching by the tag name.'
+        : 'Matches images similar to the ones already in this tag, plus the tag name.';
   }
 
   Widget _resultsHeader(List<LibraryAsset> visible) {
@@ -571,6 +707,14 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
                 ),
                 const SizedBox(height: 12),
                 _controls(context),
+                if (_basisText case final basis?)
+                  Text(
+                    basis,
+                    key: const ValueKey('tag-match-basis'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.mist),
+                  ),
                 if (widget.classifierError != null)
                   Text(
                     'Classifier unavailable: ${widget.classifierError}',
@@ -580,7 +724,13 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
                 const SizedBox(height: 8),
                 if (_scanning)
                   LinearProgressIndicator(
-                    value: widget.assets.isEmpty
+                    value: _indexing > 0
+                        ? _indexed / _indexing
+                        : widget.scanSemantic != null &&
+                              _source == TagMatchSource.semantic &&
+                              _processed == 0
+                        ? null
+                        : widget.assets.isEmpty
                         ? 0
                         : _processed / widget.assets.length,
                   ),

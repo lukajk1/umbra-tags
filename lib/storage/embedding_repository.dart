@@ -2,7 +2,9 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:sqlite3/sqlite3.dart';
 
+import '../ml/tag_match.dart';
 import '../ml/tag_sort.dart';
+import 'tag_repository.dart';
 
 /// Runs only in the library isolate, alongside all other catalog mutations.
 class EmbeddingRepository {
@@ -174,6 +176,8 @@ class EmbeddingRepository {
           for (final (id, score) in scored.take(limit))
             <String, Object?>{'id': id, 'score': score},
         ];
+      case 'matchScores':
+        return _matchScores(key, args);
       case 'sortScores':
         return _sortScores(key, args);
       case 'sortEnd':
@@ -362,6 +366,103 @@ class EmbeddingRepository {
       ];
     }
     return result;
+  }
+
+  /// "Find matching images" for one tag (see `ml/tag_match.dart`), in one
+  /// pass over the stored vectors. Arguments: `tagId`, optional `nameVector`
+  /// (the tag name's text vector in this model's space).
+  ///
+  /// Members are the non-archived images carrying the tag or a descendant,
+  /// as the tag's view counts them. Every other non-archived, non-missing
+  /// image with a current vector is scored. Returns `scores` {asset id:
+  /// score}, `members` (members with vectors; 0 means the name alone
+  /// scores), `nameWeight` (the name's weight beside the members; null
+  /// without members or a name vector), `threshold` (suggested minimum),
+  /// `unindexed` (scorable images without a vector yet) and `failed`
+  /// {asset id: indexing error}.
+  Map<String, Object?> _matchScores(String key, Map args) {
+    final tagId = args['tagId'] as String;
+    List<double>? name;
+    if (args['nameVector'] case final List raw when raw.isNotEmpty) {
+      name = [for (final v in raw) (v as num).toDouble()];
+      if (name.length > 16384 || name.any((v) => !v.isFinite)) {
+        throw StateError('Invalid tag name vector.');
+      }
+    }
+    final memberIds = {
+      for (final row in db.select(
+        '''${TagRepository.descendants} SELECT DISTINCT at.asset_id FROM asset_tags at
+        JOIN descendants d ON d.id=at.tag_id
+        JOIN assets a ON a.id=at.asset_id WHERE a.archived=0''',
+        [tagId],
+      ))
+        row['asset_id'] as String,
+    };
+    final members = <List<double>>[];
+    final ids = <String>[];
+    final images = <List<double>>[];
+    var dimension = name?.length;
+    final statement = db.prepare(
+      '''SELECT a.id,a.missing,e.vector FROM assets a JOIN embeddings e ON e.asset_id=a.id
+      WHERE e.model_key=? AND e.analyzed_sha256=a.sha256
+      AND e.vector IS NOT NULL AND a.archived=0 ORDER BY a.id''',
+    );
+    try {
+      final cursor = statement.selectCursor([key]);
+      while (cursor.moveNext()) {
+        final row = cursor.current;
+        final id = row['id'] as String;
+        final member = memberIds.contains(id);
+        if (!member && row['missing'] == 1) continue;
+        final bytes = row['vector'] as Uint8List;
+        dimension ??= bytes.length ~/ 4;
+        if (bytes.length != dimension * 4) continue;
+        final data = ByteData.sublistView(bytes);
+        final vector = Float32List(dimension);
+        for (var i = 0; i < dimension; i++) {
+          vector[i] = data.getFloat32(i * 4, Endian.little);
+        }
+        if (member) {
+          members.add(vector);
+        } else {
+          ids.add(id);
+          images.add(vector);
+        }
+      }
+    } finally {
+      statement.close();
+    }
+    final unindexed = <String>[];
+    final failed = <String, String>{};
+    for (final row in db.select(
+      '''SELECT a.id,e.error FROM assets a LEFT JOIN embeddings e ON e.asset_id=a.id
+      AND e.model_key=? AND e.analyzed_sha256=a.sha256
+      WHERE a.archived=0 AND a.missing=0 AND (e.asset_id IS NULL OR e.vector IS NULL)''',
+      [key],
+    )) {
+      final id = row['id'] as String;
+      if (memberIds.contains(id)) continue;
+      if (row['error'] case final String error) {
+        failed[id] = error;
+      } else {
+        unindexed.add(id);
+      }
+    }
+    TagMatchResult? result;
+    if (images.isNotEmpty && (members.isNotEmpty || name != null)) {
+      result = scoreTagMatch(images, members, nameVector: name).$1;
+    }
+    return {
+      'scores': {
+        for (var i = 0; i < ids.length && result != null; i++)
+          ids[i]: result.scores[i],
+      },
+      'members': members.length,
+      'nameWeight': result?.nameWeight,
+      'threshold': result?.threshold,
+      'unindexed': unindexed,
+      'failed': failed,
+    };
   }
 
   /// Runs `[sql] (?,?,…)` for [ids] in chunks under SQLite's variable limit.

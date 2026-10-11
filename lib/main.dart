@@ -1832,8 +1832,21 @@ class _GalleryPageState extends State<GalleryPage>
   void _findTagMatches(LibraryTag tag) => _run(() async {
     final library = _library;
     if (library == null) return;
+    // Images in the tag's view (the tag or a descendant) are its examples,
+    // not candidates.
+    final subtree = <String>{tag.id};
+    for (var grew = true; grew;) {
+      grew = false;
+      for (final other in _tags) {
+        if (other.parentId != null &&
+            subtree.contains(other.parentId) &&
+            subtree.add(other.id)) {
+          grew = true;
+        }
+      }
+    }
     final assets = (await library.assets())
-        .where((asset) => !asset.missing && !asset.tagIds.contains(tag.id))
+        .where((asset) => !asset.missing && !asset.tagIds.any(subtree.contains))
         .toList();
     if (_closingWindow) return;
     final classifier = _imageClassifier;
@@ -1857,6 +1870,8 @@ class _GalleryPageState extends State<GalleryPage>
         classifierError: classifierError,
         classifierThreshold: _mlSettings.threshold,
         thumbnail: library.thumbnail,
+        scanSemantic: (progress, stopped) =>
+            _scanTagMatches(library, tag, assets, progress, stopped),
         score: (asset, source, label) async {
           if (_closingWindow) throw StateError('Application is closing.');
           if (!identical(library, _library)) {
@@ -1901,6 +1916,91 @@ class _GalleryPageState extends State<GalleryPage>
     );
     await _reload();
   });
+
+  /// The semantic scan of "Find matching images": one worker pass over the
+  /// stored vectors scores every image by the images already in [tag] and
+  /// its name (see `ml/tag_match.dart`). Images without a vector are indexed
+  /// first. Returns null without a working similarity index; the dialog
+  /// then scores by the tag name, image by image.
+  Future<TagMatchBatch?> _scanTagMatches(
+    LibraryStore library,
+    LibraryTag tag,
+    List<LibraryAsset> assets,
+    void Function(int done, int total) progress,
+    bool Function() stopped,
+  ) async {
+    final similarity = _similarity;
+    if (similarity == null) return null;
+    await similarity.start();
+    final key = similarity.model?.key;
+    if (similarity.error != null || key == null) return null;
+    void check() {
+      if (_closingWindow || !identical(library, _library)) {
+        throw StateError('Library closed.');
+      }
+    }
+
+    check();
+    List<double>? name;
+    String? nameError;
+    try {
+      final cacheKey = '$key|${tag.name}';
+      name = _tagNameVectors[cacheKey];
+      if (name == null) {
+        final embedded = await _suggestionBackend.embedText(tag.name);
+        if (embedded.embeddingKey != key) {
+          throw StateError('the text and image models do not match');
+        }
+        name = _tagNameVectors[cacheKey] = embedded.vector;
+      }
+    } catch (error) {
+      name = null;
+      nameError = error.toString();
+    }
+    check();
+    Future<Map> run() async =>
+        await library.similarity({
+              'op': 'matchScores',
+              'key': key,
+              'tagId': tag.id,
+              'nameVector': name,
+            })
+            as Map;
+    var result = await run();
+    final byId = {for (final asset in assets) asset.id: asset};
+    final pending = [
+      for (final id in (result['unindexed'] as List).cast<String>()) ?byId[id],
+    ];
+    final errors = <String, String>{};
+    if (pending.isNotEmpty) {
+      for (var i = 0; i < pending.length && !stopped(); i++) {
+        progress(i, pending.length);
+        check();
+        try {
+          await similarity.ensure(pending[i]);
+        } catch (error) {
+          errors[pending[i].id] = error.toString();
+        }
+      }
+      progress(pending.length, pending.length);
+      check();
+      result = await run();
+    }
+    final members = result['members'] as int;
+    if (members == 0 && name == null) {
+      throw LibraryException(
+        'This tag has no indexed images yet and its name could not be used: $nameError',
+      );
+    }
+    return TagMatchBatch(
+      scores: (result['scores'] as Map).cast<String, double>(),
+      errors: {...(result['failed'] as Map).cast<String, String>(), ...errors},
+      members: members,
+      nameWeight: (result['nameWeight'] as num?)?.toDouble(),
+      nameError: name == null ? nameError : null,
+      threshold: (result['threshold'] as num?)?.toDouble(),
+    );
+  }
 
   void _selectImage(String path) {
     if (_busy) return;
