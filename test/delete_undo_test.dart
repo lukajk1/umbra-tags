@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_gallery_test/main.dart';
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
+import 'support/temp_dir.dart';
 
 class _Picker extends FileSelectorPlatform {
   _Picker(this.folder);
@@ -77,7 +78,7 @@ void main() {
           null,
         );
         FileSelectorPlatform.instance = previousPicker;
-        directory.deleteSync(recursive: true);
+        deleteTempDir(directory);
       });
       await tester.binding.setSurfaceSize(const Size(1280, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));

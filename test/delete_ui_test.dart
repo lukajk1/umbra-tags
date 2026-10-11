@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_gallery_test/main.dart';
 import 'package:flutter_gallery_test/storage/library_store.dart';
 import 'package:image/image.dart' as img;
+import 'support/temp_dir.dart';
 
 class _Picker extends FileSelectorPlatform {
   _Picker(this.path);
@@ -40,7 +41,7 @@ void main() {
       FileSelectorPlatform.instance = _Picker(root.path);
       addTearDown(() {
         FileSelectorPlatform.instance = previous;
-        temp.deleteSync(recursive: true);
+        deleteTempDir(temp);
       });
       await tester.runAsync(() async {
         final store = await LibraryStore.create(root.path, 'Deletion test');
