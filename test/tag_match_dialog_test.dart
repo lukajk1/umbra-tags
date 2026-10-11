@@ -89,6 +89,31 @@ void main() {
     expect(find.text('3 selected of 4'), findsOneWidget);
   });
 
+  testWidgets('typing a minimum score reselects, and the slider follows', (
+    tester,
+  ) async {
+    await _openAndScan(tester);
+    final field = find.byKey(const ValueKey('match-threshold-field'));
+    Slider slider() => tester.widget<Slider>(
+      find.byKey(const ValueKey('match-threshold-slider')),
+    );
+    // After a scan the slider spans the scores found (0.1 to 0.5).
+    expect(slider().min, closeTo(0.1, 1e-9));
+    expect(slider().max, closeTo(0.5, 1e-9));
+
+    await tester.enterText(field, '0.25');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.text('2 selected of 2'), findsOneWidget); // a, b
+    expect(slider().value, closeTo(0.25, 1e-9));
+
+    // Dragging the slider rewrites the field.
+    slider().onChanged!(0.15);
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(field).controller!.text, '0.1500');
+    expect(find.text('3 selected of 3'), findsOneWidget);
+  });
+
   testWidgets('clicking a tile or its checkbox toggles selection', (
     tester,
   ) async {

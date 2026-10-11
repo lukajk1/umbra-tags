@@ -67,6 +67,55 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
 
   bool get _locked => _scanning || _saving;
 
+  /// Typed threshold, kept in sync with the slider while not being edited.
+  final _thresholdField = TextEditingController();
+  final _thresholdFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _thresholdField.dispose();
+    _thresholdFocus.dispose();
+    super.dispose();
+  }
+
+  /// The slider spans the scores the scan found (rank scores cluster in a
+  /// narrow band), or the full range before a scan.
+  (double, double) get _sliderRange {
+    if (_source == TagMatchSource.classifier) return (0, 1);
+    if (_scores.length < 2) return (-1, 1);
+    var lo = _scores.values.reduce((a, b) => a < b ? a : b);
+    var hi = _scores.values.reduce((a, b) => a > b ? a : b);
+    if (hi - lo < 0.01) {
+      lo -= 0.005;
+      hi += 0.005;
+    }
+    return (lo, hi);
+  }
+
+  void _setThreshold(double value) => setState(() {
+    if (_source == TagMatchSource.classifier) {
+      _classifierThreshold = value.clamp(0, 1);
+    } else {
+      _semanticThreshold = value.clamp(-1, 1);
+    }
+    _selectMatches();
+  });
+
+  /// Classifier thresholds are typed as percentages; rank scores as-is.
+  String _thresholdText(double value) => _source == TagMatchSource.classifier
+      ? (value * 100).toStringAsFixed(1)
+      : value.toStringAsFixed(4);
+
+  void _submitThreshold(String text) {
+    final typed = double.tryParse(text.trim());
+    if (typed == null) {
+      _thresholdField.text = _thresholdText(_threshold);
+      return;
+    }
+    _setThreshold(_source == TagMatchSource.classifier ? typed / 100 : typed);
+    _thresholdField.text = _thresholdText(_threshold);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +128,7 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
       }
     }
     _classLabel ??= widget.classifierLabels.firstOrNull;
+    _thresholdField.text = _thresholdText(_threshold);
   }
 
   void _reset() {
@@ -254,10 +304,13 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
             ],
             onChanged: locked
                 ? null
-                : (value) => setState(() {
-                    _source = value!;
-                    _reset();
-                  }),
+                : (value) {
+                    setState(() {
+                      _source = value!;
+                      _reset();
+                    });
+                    _thresholdField.text = _thresholdText(_threshold);
+                  },
           ),
         ),
         if (_source == TagMatchSource.classifier)
@@ -286,7 +339,7 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
             ),
           ),
         SizedBox(
-          width: 320,
+          width: 400,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -295,22 +348,57 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
                 padding: const EdgeInsets.only(left: 24),
                 child: Text('Minimum ${_scoreLabel(_threshold)}'),
               ),
-              Slider(
-                value: _threshold,
-                min: _source == TagMatchSource.classifier ? 0 : -1,
-                max: 1,
-                divisions: _source == TagMatchSource.classifier ? 100 : 400,
-                label: _scoreLabel(_threshold),
-                onChanged: locked
-                    ? null
-                    : (value) => setState(() {
-                        if (_source == TagMatchSource.classifier) {
-                          _classifierThreshold = value;
-                        } else {
-                          _semanticThreshold = value;
+              Row(
+                children: [
+                  Expanded(
+                    child: Slider(
+                      key: const ValueKey('match-threshold-slider'),
+                      value: _threshold.clamp(_sliderRange.$1, _sliderRange.$2),
+                      min: _sliderRange.$1,
+                      max: _sliderRange.$2,
+                      label: _scoreLabel(_threshold),
+                      onChanged: locked
+                          ? null
+                          : (value) {
+                              _setThreshold(value);
+                              _thresholdField.text = _thresholdText(_threshold);
+                            },
+                    ),
+                  ),
+                  SizedBox(
+                    width: 92,
+                    child: TextField(
+                      key: const ValueKey('match-threshold-field'),
+                      controller: _thresholdField,
+                      focusNode: _thresholdFocus,
+                      enabled: !locked,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.\-]')),
+                      ],
+                      decoration: InputDecoration(
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        suffixText: _source == TagMatchSource.classifier
+                            ? '%'
+                            : null,
+                      ),
+                      onSubmitted: _submitThreshold,
+                      onTapOutside: (_) {
+                        if (_thresholdFocus.hasFocus) {
+                          _submitThreshold(_thresholdField.text);
+                          _thresholdFocus.unfocus();
                         }
-                        _selectMatches();
-                      }),
+                      },
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
