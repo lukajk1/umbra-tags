@@ -34,6 +34,7 @@ import 'widgets/view_breadcrumbs.dart';
 import 'widgets/resize_dialog.dart';
 import 'widgets/ai_sort_dialog.dart';
 import 'theme.dart';
+import 'widgets/ambient_glass.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1384,6 +1385,24 @@ class _GalleryPageState extends State<GalleryPage>
     _pendingScrollOffset = null;
     if (_scrollController.hasClients) _scrollController.jumpTo(0);
   });
+
+  /// Bottom-edge colours for the preview panel's glass tint, per image.
+  final Map<String, Future<List<Color>?>> _ambient = {};
+
+  Future<List<Color>?> _ambientFor(String path) {
+    final asset = _assetsByPath[path];
+    if (asset == null) return Future.value(null);
+    if (_ambient.length > 64) _ambient.remove(_ambient.keys.first);
+    return _ambient.putIfAbsent('${asset.id}-${asset.contentHash}', () async {
+      try {
+        // The cached thumbnail is plenty for a 4×4 colour grid.
+        final thumbnail = await _thumbnailFor(path);
+        return thumbnail == null ? null : await bottomEdgeColors(thumbnail);
+      } catch (_) {
+        return null; // Untinted panel; nothing else depends on it.
+      }
+    });
+  }
 
   Future<String?> _thumbnailFor(String path) {
     if (_thumbnails.length > 256) _thumbnails.remove(_thumbnails.keys.first);
@@ -3713,33 +3732,44 @@ class _GalleryPageState extends State<GalleryPage>
                                     ),
                             ),
                           ),
-                          if (_selectedPaths.isNotEmpty) ...[
-                            PreviewDetails(
-                              asset: _assetsByPath[_selectedPaths.first]!,
-                              selectionCount: _selectedPaths.length,
+                          if (_selectedPaths.isNotEmpty)
+                            AmbientGlass(
+                              colors: _ambientFor(_selectedPaths.first),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  PreviewDetails(
+                                    asset: _assetsByPath[_selectedPaths.first]!,
+                                    selectionCount: _selectedPaths.length,
+                                  ),
+                                  const Divider(
+                                    height: 25,
+                                    indent: 16,
+                                    endIndent: 16,
+                                    color: Colors.white12,
+                                  ),
+                                  SelectionTags(
+                                    tags: _tags,
+                                    assets: _selection,
+                                  ),
+                                  const Divider(
+                                    height: 25,
+                                    indent: 16,
+                                    endIndent: 16,
+                                    color: Colors.white12,
+                                  ),
+                                  OpenExternallyButton(
+                                    onOpen:
+                                        _busy ||
+                                            _assetsByPath[_selectedPaths.first]!
+                                                .missing
+                                        ? null
+                                        : _openPreviewExternally,
+                                  ),
+                                ],
+                              ),
                             ),
-                            const Divider(
-                              height: 25,
-                              indent: 16,
-                              endIndent: 16,
-                              color: Colors.white12,
-                            ),
-                            SelectionTags(tags: _tags, assets: _selection),
-                            const Divider(
-                              height: 25,
-                              indent: 16,
-                              endIndent: 16,
-                              color: Colors.white12,
-                            ),
-                            OpenExternallyButton(
-                              onOpen:
-                                  _busy ||
-                                      _assetsByPath[_selectedPaths.first]!
-                                          .missing
-                                  ? null
-                                  : _openPreviewExternally,
-                            ),
-                          ],
                         ],
                       ),
                     ),
