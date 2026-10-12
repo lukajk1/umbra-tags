@@ -69,10 +69,19 @@ try {
     if ($LASTEXITCODE) { throw "Could not push $tag." }
 
     # 4. Wait for the release CI creates, then attach the Full installer.
+    # "release not found" on stderr is expected while CI runs; with
+    # ErrorActionPreference Stop, Windows PowerShell would treat it as fatal.
+    function Test-Release {
+        $previous = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            gh release view $tag --repo $repo --json tagName *> $null
+            return $LASTEXITCODE -eq 0
+        } finally { $ErrorActionPreference = $previous }
+    }
     $deadline = (Get-Date).AddMinutes($WaitMinutes)
     do {
-        gh release view $tag --repo $repo --json tagName 2>$null | Out-Null
-        if ($LASTEXITCODE -eq 0) { break }
+        if (Test-Release) { break }
         if ((Get-Date) -gt $deadline) { throw "CI did not publish $tag within $WaitMinutes minutes. Check: gh run list --workflow release.yml" }
         Start-Sleep -Seconds 30
     } while ($true)
