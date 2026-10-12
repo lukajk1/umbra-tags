@@ -10,9 +10,7 @@ enum LibraryView { all, untagged, archived }
 
 /// Tint marking reference tags (and, faintly, tags inside them) in the
 /// sidebar.
-const referenceTagColor = Color(
-  0xFFC8D0FF,
-); // Pale foam-blue, Ultramarine theme
+const referenceTagColor = Color(0xFFFFC9CC); // Pale rose, Crimson theme
 
 List<({LibraryTag tag, int depth})> tagTree(List<LibraryTag> tags) {
   final result = <({LibraryTag tag, int depth})>[];

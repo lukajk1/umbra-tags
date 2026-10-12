@@ -10,7 +10,7 @@ import 'package:path/path.dart' as p;
 void main() {
   test('OKLab round-trips sRGB colours', () {
     for (final color in [
-      const Color(0xFF1A23DE),
+      const Color(0xFFA50E1E),
       const Color(0xFFFFC94D),
       const Color(0xFF808080),
       const Color(0xFF000000),

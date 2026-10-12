@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
-/// Ultramarine: colours from the dithered-waves reference. Full ultramarine
-/// only on the top bar; deep blues for the working surfaces, darkest under
-/// the images so photos keep their own colour; white for text and selection.
+/// Crimson: one deep, saturated red on the title bar and icon; oxblood for
+/// the working surfaces, darkest under the images so photos keep their own
+/// colour; warm white for text and selection.
 abstract final class AppColors {
-  static const ultra = Color(0xFF1A23DE); // Top bar, dither ink
-  static const well = Color(0xFF070A33); // Gallery background
-  static const panel = Color(0xFF0C1163); // Sidebar, preview, status, dialogs
-  static const raised = Color(0xFF141B8A); // Hover, selected rows, chips
-  static const rule = Color(0xFF262DA0); // Dividers, outlines
-  static const foam = Color(0xFFF3F5FF); // Text, selection, primary actions
-  static const mist = Color(0xFFA3ABEE); // Secondary text
-  static const haze = Color(0xFF6870C9); // Counts, guides, hints
+  static const brand = Color(0xFFA50E1E); // Title bar, icon
+  static const well = Color(0xFF1E0407); // Gallery background
+  static const panel = Color(0xFF3A0910); // Sidebar, preview, status, dialogs
+  static const raised = Color(0xFF5A0E18); // Hover, selected rows, chips
+  static const rule = Color(0xFF74202A); // Dividers, outlines
+  static const foam = Color(0xFFFFF2F1); // Text, selection, primary actions
+  static const mist = Color(0xFFE6A3A6); // Secondary text
+  static const haze = Color(0xFFB86A70); // Counts, guides, hints
   static const star = Color(0xFFFFC94D); // Stars only
 
   // Roles the rest of the app was written against.
@@ -44,16 +44,16 @@ ThemeData buildAppTheme() {
   return base.copyWith(
     colorScheme: const ColorScheme.dark(
       primary: AppColors.foam,
-      onPrimary: AppColors.ultra,
+      onPrimary: AppColors.brand,
       secondary: AppColors.foam,
-      onSecondary: AppColors.ultra,
+      onSecondary: AppColors.brand,
       surface: AppColors.panel,
       onSurface: AppColors.foam,
       onSurfaceVariant: AppColors.mist,
       surfaceContainerHighest: AppColors.raised,
       outline: AppColors.rule,
       outlineVariant: AppColors.rule,
-      error: Color(0xFFFF8A80),
+      error: Color(0xFFFFC46B), // Amber: red error text would vanish on red
     ),
     scaffoldBackgroundColor: AppColors.well,
     canvasColor: AppColors.panel,
@@ -63,7 +63,7 @@ ThemeData buildAppTheme() {
     dividerTheme: const DividerThemeData(color: AppColors.rule, space: 1),
     // The one saturated band.
     appBarTheme: const AppBarTheme(
-      backgroundColor: AppColors.ultra,
+      backgroundColor: AppColors.brand,
       foregroundColor: AppColors.foam,
       surfaceTintColor: Colors.transparent,
       scrolledUnderElevation: 0,
@@ -141,19 +141,19 @@ ThemeData buildAppTheme() {
         (states) =>
             states.contains(WidgetState.selected) ? AppColors.foam : null,
       ),
-      checkColor: const WidgetStatePropertyAll(AppColors.ultra),
+      checkColor: const WidgetStatePropertyAll(AppColors.brand),
     ),
     sliderTheme: const SliderThemeData(
       activeTrackColor: AppColors.foam,
-      inactiveTrackColor: Color(0x66F3F5FF),
+      inactiveTrackColor: Color(0x66FFF2F1),
       thumbColor: AppColors.foam,
-      overlayColor: Color(0x29F3F5FF),
+      overlayColor: Color(0x29FFF2F1),
     ),
     segmentedButtonTheme: SegmentedButtonThemeData(
       style: ButtonStyle(
         shape: const WidgetStatePropertyAll(square),
         side: const WidgetStatePropertyAll(
-          BorderSide(color: Color(0x73F3F5FF)),
+          BorderSide(color: Color(0x73FFF2F1)),
         ),
         backgroundColor: WidgetStateProperty.resolveWith(
           (states) =>
@@ -161,7 +161,7 @@ ThemeData buildAppTheme() {
         ),
         foregroundColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.selected)
-              ? AppColors.ultra
+              ? AppColors.brand
               : AppColors.foam,
         ),
       ),

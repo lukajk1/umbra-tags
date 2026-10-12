@@ -384,7 +384,7 @@ class _TagMatchDialogState extends State<TagMatchDialog> {
   void _preview(List<LibraryAsset> items, int index) {
     showDialog<void>(
       context: context,
-      barrierColor: const Color(0xE6070A33),
+      barrierColor: const Color(0xE61E0407),
       builder: (_) => _MatchPreview(
         items: items,
         initial: index,
@@ -891,7 +891,7 @@ class _MatchTile extends StatelessWidget {
                   top: 4,
                   right: 4,
                   child: Container(
-                    color: const Color(0xB3070A33),
+                    color: const Color(0xB31E0407),
                     child: Checkbox(
                       key: ValueKey('tag-match-check-${asset.id}'),
                       value: selected,

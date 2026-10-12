@@ -180,7 +180,7 @@ class AmbientGlass extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0x000C1163), Color(0x8C0C1163)],
+                  colors: [Color(0x003A0910), Color(0x8C3A0910)],
                 ),
               ),
             ),

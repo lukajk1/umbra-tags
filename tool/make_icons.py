@@ -1,7 +1,7 @@
-"""Builds every app icon from one source: the ultramarine dithered moon.
+"""Builds every app icon from one source: the crimson dithered moon.
 
 The icon is a 24x24 grid of dots: the original moon disc (taken from
-design/moon-icon/source.png) inset on an ultramarine square, its red patch as
+design/moon-icon/source.png) inset on a crimson square, its red patch as
 a white ordered dither and the rest of the disc as a faint one. Sizes at or
 above 24 px scale the grid up without smoothing so the dots stay square; 16 px
 is reduced smoothly from 48 px. Run from the repository root:
@@ -15,7 +15,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / 'design' / 'moon-icon' / 'source.png'
-BLUE, WHITE = (26, 35, 222), (255, 255, 255)
+SQUARE, DOT = (165, 14, 30), (255, 242, 241)  # crimson square, warm-white dither
 DOTS = 24
 RED_DENSITY = (0.42, 0.72)  # white share across the red patch, light to dark
 DISC_DENSITY = 0.14  # white share on the rest of the disc
@@ -47,8 +47,8 @@ def dot_grid() -> np.ndarray:
 
 def render(grid: np.ndarray, size: int) -> Image.Image:
     base = np.zeros((DOTS, DOTS, 3), np.uint8)
-    base[:] = BLUE
-    base[grid] = WHITE
+    base[:] = SQUARE
+    base[grid] = DOT
     image = Image.fromarray(base)
     if size >= DOTS:
         return image.resize((size, size), Image.NEAREST)

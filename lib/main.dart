@@ -3110,11 +3110,11 @@ class _GalleryPageState extends State<GalleryPage>
     style: const TextStyle(fontSize: 13.5),
     decoration: InputDecoration(
       isDense: true,
-      // Translucent on the ultramarine bar.
-      fillColor: const Color(0x61070A33),
+      // Translucent on the red title bar.
+      fillColor: const Color(0x611E0407),
       enabledBorder: const OutlineInputBorder(
         borderRadius: BorderRadius.zero,
-        borderSide: BorderSide(color: Color(0x47F3F5FF)),
+        borderSide: BorderSide(color: Color(0x47FFF2F1)),
       ),
       hintText: 'Describe an image… e.g. blue city at night',
       prefixIcon: const Icon(Icons.search, size: 18),
@@ -4159,14 +4159,14 @@ class _KeyCap extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0x59F3F5FF)),
+          border: Border.all(color: const Color(0x59FFF2F1)),
         ),
         child: Text(
           label,
           style: const TextStyle(
             fontFamily: 'Consolas',
             fontSize: 11,
-            color: Color(0xD9F3F5FF),
+            color: Color(0xD9FFF2F1),
           ),
         ),
       ),
