@@ -17,6 +17,18 @@ Future<void> until(WidgetTester tester, bool Function() ready) async {
   fail('Session state did not settle');
 }
 
+/// The saved session, or null while it is being replaced or half-written:
+/// on Windows a read can collide with the app's atomic rename (errno 32).
+Map? readSession(File file) {
+  try {
+    return jsonDecode(file.readAsStringSync()) as Map;
+  } on FileSystemException {
+    return null;
+  } on FormatException {
+    return null;
+  }
+}
+
 void main() {
   testWidgets(
     'restores last library, layout, zoom, panel and scroll; saves changes across sessions',
@@ -80,13 +92,15 @@ void main() {
       await tester.pump();
       await tester.drag(find.byType(Slider), const Offset(25, 0));
       await tester.pump(const Duration(milliseconds: 500));
+      late Map saved;
       await until(tester, () {
-        final data = jsonDecode(session.readAsStringSync()) as Map;
+        final data = readSession(session);
+        if (data == null) return false;
+        saved = data;
         return data['layout'] == 'masonry' &&
             data['previewVisible'] == true &&
             (data['previewWidth'] as num) > 360;
       });
-      final saved = jsonDecode(session.readAsStringSync()) as Map;
       await tester.tap(find.text('File'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Close library'));

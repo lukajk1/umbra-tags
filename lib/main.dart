@@ -72,7 +72,18 @@ Future<void> _saveSession(
     await file.parent.create(recursive: true);
     final temporary = File('${file.path}.tmp');
     await temporary.writeAsString(jsonEncode(data), flush: true);
-    await temporary.rename(file.path);
+    // Windows refuses to replace a file another process is reading (e.g. a
+    // virus scanner, or a test polling it); retry briefly instead of
+    // silently dropping the save.
+    for (var attempt = 0; ; attempt++) {
+      try {
+        await temporary.rename(file.path);
+        break;
+      } on FileSystemException {
+        if (attempt >= 9) rethrow;
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+    }
   } catch (_) {}
 }
 
