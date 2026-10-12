@@ -193,6 +193,9 @@ class _GalleryPageState extends State<GalleryPage>
   bool _searchModelReady = false;
   Future<void>? _searchModelLoading;
 
+  /// Whether gallery tiles list their tags along the bottom edge.
+  bool _showTileTags = true;
+
   /// Sidebar tags whose children are hidden; kept across sessions.
   final Set<String> _collapsedTags = {};
   bool _busy = false;
@@ -966,6 +969,7 @@ class _GalleryPageState extends State<GalleryPage>
     if (!mounted) return;
     setState(() {
       _tileSize = _settingNumber(data['tileSize'], 200, 50, 400);
+      _showTileTags = data['tileTags'] != false;
       _previewWidth = _settingNumber(data['previewWidth'], 300, 150, 800);
       _sidebarWidth = _settingNumber(
         data['sidebarWidth'],
@@ -1080,6 +1084,7 @@ class _GalleryPageState extends State<GalleryPage>
       'receiverEnabled': _receiverEnabled,
       'receiverPort': _receiverPort,
       'tileSize': _tileSize,
+      'tileTags': _showTileTags,
       'collapsedTags': _collapsedTags.toList(),
       'previewWidth': _previewWidth,
       'sidebarWidth': _sidebarWidth,
@@ -1413,6 +1418,14 @@ class _GalleryPageState extends State<GalleryPage>
         return null; // Untinted panel; nothing else depends on it.
       }
     });
+  }
+
+  /// An image's tag names for its tile caption, alphabetical.
+  List<String> _tileTagNames(LibraryAsset asset) {
+    if (asset.tagIds.isEmpty) return const [];
+    final names = {for (final tag in _tags) tag.id: tag.name};
+    return [for (final id in asset.tagIds) ?names[id]]
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
   }
 
   Future<String?> _thumbnailFor(String path) {
@@ -3290,6 +3303,19 @@ class _GalleryPageState extends State<GalleryPage>
                     },
                     child: const Text('Zoom out'),
                   ),
+                  MenuItemButton(
+                    leadingIcon: Icon(
+                      _showTileTags
+                          ? Icons.check_box_outlined
+                          : Icons.check_box_outline_blank,
+                      size: 18,
+                    ),
+                    onPressed: () {
+                      setState(() => _showTileTags = !_showTileTags);
+                      _persistSession();
+                    },
+                    child: const Text('Show tags on images'),
+                  ),
                 ],
                 child: const Text('View'),
               ),
@@ -3529,6 +3555,9 @@ class _GalleryPageState extends State<GalleryPage>
                                         ? _selectedPaths.length
                                         : 1,
                                     starred: _assets[index].starred,
+                                    tagNames: _showTileTags
+                                        ? _tileTagNames(_assets[index])
+                                        : const [],
                                     starWillSet: _starWillSet(
                                       _imagePaths[index],
                                     ),
@@ -3610,6 +3639,9 @@ class _GalleryPageState extends State<GalleryPage>
                                         ? _selectedPaths.length
                                         : 1,
                                     starred: _assets[index].starred,
+                                    tagNames: _showTileTags
+                                        ? _tileTagNames(_assets[index])
+                                        : const [],
                                     starWillSet: _starWillSet(
                                       _imagePaths[index],
                                     ),
@@ -3918,6 +3950,7 @@ class GalleryTile extends StatelessWidget {
     this.onTagDropped,
     this.tagDropCount = 1,
     this.starred = false,
+    this.tagNames = const [],
     this.starWillSet = true,
     this.onToggleStar,
   });
@@ -3949,6 +3982,9 @@ class GalleryTile extends StatelessWidget {
   /// Whether this image is starred (shows a badge), whether the menu's star
   /// action would star or unstar its targets, and that action.
   final bool starred, starWillSet;
+
+  /// Shown along the bottom edge, over the image.
+  final List<String> tagNames;
   final VoidCallback? onToggleStar;
 
   @override
@@ -4006,6 +4042,34 @@ class GalleryTile extends StatelessWidget {
             layout == LayoutMode.masonry
                 ? AspectRatio(aspectRatio: aspectRatio, child: image)
                 : ColoredBox(color: AppColors.lighter, child: image),
+            if (tagNames.isNotEmpty)
+              Positioned(
+                left: 7,
+                right: 7,
+                bottom: 5,
+                child: IgnorePointer(
+                  child: Text(
+                    tagNames.join('  ·  '),
+                    key: ValueKey('tile-tags-$path'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.foam,
+                      // Readable over any image: a tight shadow for the edge
+                      // and a wide, soft one for light backgrounds.
+                      shadows: [
+                        Shadow(
+                          offset: Offset(0, 1),
+                          blurRadius: 2,
+                          color: Color(0xE6000000),
+                        ),
+                        Shadow(blurRadius: 8, color: Color(0x99000000)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             if (starred)
               const Positioned(
                 top: 6,
