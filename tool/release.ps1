@@ -97,5 +97,8 @@ try {
     if ($Prerelease) { $edit += '--prerelease' }
     gh @edit
     if ($LASTEXITCODE) { throw 'Editing the release failed.' }
-    gh release view $tag --repo $repo --json url,isPrerelease,assets -q '"\(.url)  prerelease=\(.isPrerelease)\n" + ([.assets[] | "  \(.name)  \(.size / 1048576 | floor) MB"] | join("\n"))'
+    # Summarize in PowerShell: Windows PowerShell splits a quoted jq query on spaces.
+    $release = gh release view $tag --repo $repo --json url,isPrerelease,assets | ConvertFrom-Json
+    Write-Output "$($release.url)  prerelease=$($release.isPrerelease)"
+    foreach ($asset in $release.assets) { Write-Output ("  {0}  {1} MB" -f $asset.name, [math]::Floor($asset.size / 1MB)) }
 } finally { Pop-Location }
